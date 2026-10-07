@@ -19,10 +19,15 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import org.lwjgl.sdl.SDLKeyboard;
 import org.lwjgl.sdl.SDLVideo;
 
 /** Host input, applied on the client thread: the host window has the focus, so Minecraft never sees these itself. */
-final class ClientInput {
+public final class ClientInput {
 	private ClientInput() {
 	}
 
@@ -40,6 +45,33 @@ final class ClientInput {
 	/** SDL3 modifier bits from the host (0x1 Shift, 0x40 Ctrl, 0x100 Alt): shift-click and the like read them off the event. */
 	private static int mods(final JsonObject m) {
 		return m.has("mods") ? m.get("mods").getAsInt() : 0;
+	}
+
+	/** What the crosshair is on, if it is one of Minecraft's own blocks (the host's barrier ground doesn't count). */
+	private static BlockHitResult realBlock(final Minecraft minecraft) {
+		HitResult hit = minecraft.hitResult;
+		if (minecraft.level == null || !(hit instanceof BlockHitResult block) || hit.getType() != HitResult.Type.BLOCK) {
+			return null;
+		}
+
+		return minecraft.level.getBlockState(block.getBlockPos()).is(Blocks.BARRIER) ? null : block;
+	}
+
+	/**
+	 * Minecraft is swinging (Minecraft.startAttack, before it resets the recharge): at no block of its own, the host hits
+	 * what's in front of Steve in its world (creatures with anything in hand, rocks and trees with a pickaxe or axe), for
+	 * what the swing deals here: the held item's attack damage, scaled by the recharge exactly as Minecraft scales it.
+	 */
+	public static void swing(final Minecraft minecraft) {
+		LocalPlayer player = minecraft.player;
+		if (player == null || realBlock(minecraft) != null) {
+			return;
+		}
+
+		String item = BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).getPath();
+		float charge = player.getAttackStrengthScale(0.5F);
+		double damage = attackDamage(player) * (0.2 + 0.8 * charge * charge);
+		MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"melee\",\"item\":\"%s\",\"dmg\":%.2f,\"charge\":%.2f}", item, damage, charge));
 	}
 
 	private static void click(final KeyMapping key) {
@@ -84,16 +116,42 @@ final class ClientInput {
 					m.get("down").getAsBoolean() ? "down" : "up", (int) x, (int) y, handled);
 			}
 			case "mscroll" -> minecraft.mouseHandler.onScroll(window, 0.0, m.get("d").getAsDouble());
-			case "kpress" -> minecraft.keyboardHandler.keyPress(window, m.get("down").getAsBoolean() ? 1 : 0, new KeyEvent(m.get("k").getAsInt(), 0, mods(m)));
+			case "kpress" -> {
+				// a key event carries the scancode (what key mappings match) and the layout's keycode (what text boxes read:
+				// Backspace, Delete, the arrows, Ctrl+A/C/V): SDL gives the second from the first
+				int scancode = m.get("k").getAsInt();
+				int keycode = SDLKeyboard.SDL_GetKeyFromScancode(scancode, (short) 0, true);
+				minecraft.keyboardHandler.keyPress(window, m.get("down").getAsBoolean() ? 1 : 0, new KeyEvent(scancode, keycode, mods(m)));
+			}
 			case "char" -> minecraft.keyboardHandler.charTyped(window, new CharacterEvent(m.get("c").getAsInt()));
 			case "window" -> {
 				// the host shows Minecraft's picture: its own window stays out of the way (parked off-screen: it keeps rendering)
 				WindowParking.set(window, m.get("hidden").getAsBoolean());
+				if (m.has("host")) {
+					HostView.watchHost(m.get("host").getAsLong(), !m.has("quitWithHost") || m.get("quitWithHost").getAsBoolean());
+				}
 			}
 			case "quit" -> {
 				// the host is closing: save and quit with it
 				MineHeim.LOG.info("the host is closing: quitting Minecraft");
 				minecraft.stop();
+				HostView.quitWatchdog();
+			}
+			case "steve" -> {
+				// Minecraft mode in the host: Steve, his hand and Minecraft's HUD show; off, the host's own player is back
+				boolean on = m.get("on").getAsBoolean();
+				HostView.steve = on;
+				if (minecraft.gui.hud.isHidden() == on) {
+					minecraft.gui.hud.toggle();
+				}
+			}
+			case "interact" -> {
+				// the host player's "use" on one of Minecraft's chests, crafting tables, furnaces...: open it
+				BlockHitResult block = realBlock(minecraft);
+				if (player != null && block != null && minecraft.gameMode != null && minecraft.gui.screen() == null
+					&& minecraft.level.getBlockState(block.getBlockPos()).getMenuProvider(minecraft.level, block.getBlockPos()) != null) {
+					minecraft.gameMode.useItemOn(player, InteractionHand.MAIN_HAND, block);
+				}
 			}
 			case "key" -> {
 				String k = m.get("k").getAsString();
@@ -132,15 +190,11 @@ final class ClientInput {
 					case "swap" -> minecraft.options.keySwapOffhand;
 					default -> null;
 				};
-				if (k.equals("attack") && down && player != null) {
-					String item = BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).getPath();
-					if (item.endsWith("_sword") || item.endsWith("_pickaxe") || item.endsWith("_axe")) {
-						// a swing: the host hits what's in front of Steve in its own world (creatures for a sword, rocks and trees for tools),
-						// for what the swing would deal here: the weapon's attack damage times how far the attack has recharged
-						double damage = attackDamage(player) * player.getAttackStrengthScale(0.5F);
-						MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"melee\",\"item\":\"%s\",\"dmg\":%.2f}", item, damage));
-					}
+				if (k.equals("pick") && down && realBlock(minecraft) == null) {
+					return; // the host's invisible ground and buildings are barriers: nothing to pick there
 				}
+
+				// (a swing reaches the host from Minecraft.startAttack, when Minecraft actually swings: see swing())
 
 				if (key != null) {
 					if (down && !key.isDown()) {

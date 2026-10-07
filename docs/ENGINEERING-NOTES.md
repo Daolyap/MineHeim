@@ -26,12 +26,24 @@ What broke, surprised or cost time while building MineHeim, kept so the next per
   around the `Instantiate` call gives a clone that is never saved.
 - **No-build areas.** The start temple is a no-build location: Valheim's own pickaxe cannot dig there, and neither can MineHeim's. Tests
   that dig must start elsewhere.
+- **God mode is not invulnerability for free.** `Player.SetGodMode` also marks every creature the player hits as cheated (no drops);
+  MineHeim's Creative protection skips `Character.RPC_Damage` and the stamina calls instead.
+- **Menus are drawn after the world.** ReShade composites at present time, so Valheim's UI would end up under Minecraft. Rendering the
+  effect earlier (`render_effects` mid-frame) would read a depth copy from the frame before; instead the plugin flags "a menu is open"
+  in the pose memory and the compositor steps aside.
 - **BepInEx config strings unescape backslashes.** A path like `D:\Mods\0.9\run.cmd` loses characters (`\0`); write `/` or `\\`.
 
 ## Minecraft 26 and Fabric
 
 - **SDL3, not GLFW.** Minecraft 26 moved its window and input to SDL3: key events carry USB scancodes (`E` = 8, `Esc` = 41), mouse buttons
   are 1 left / 2 middle / 3 right, modifiers are SDL masks (Shift 0x1, Ctrl 0x40, Alt 0x100). Injecting GLFW codes silently does nothing.
+- **Two key codes per key event.** `KeyEvent(key, keycode, modifiers)`: key mappings match the scancode, text boxes (Backspace, Delete,
+  arrows, Ctrl+A/C/V) read the layout's keycode. Forwarding only the scancode makes typing work and Backspace silently fail;
+  `SDL_GetKeyFromScancode` gives the keycode.
+- **Swing damage is read when Minecraft swings**, not when the click arrives: clicks queue for the next tick, so a quick second click
+  would still see the first swing's full recharge. A mixin at the head of `Minecraft.startAttack` reads it at the right moment.
+- **`ProcessHandle.onExit()` on a process that is not a child** overflowed the JDK's small "process reaper" stack in the game; a plain
+  polling thread follows the host process instead.
 - **Unfocused window, frozen hover.** Minecraft only passes cursor movement to a screen while its window has focus
   (`handleAccumulatedMovement` checks `isWindowActive`); a small redirect lets the host's forwarded cursor through.
 - **Hidden windows stop rendering.** `SDL_HideWindow` (and minimising) stops Minecraft's frames; so does parking the window far off-screen
@@ -57,5 +69,7 @@ What broke, surprised or cost time while building MineHeim, kept so the next per
   MSVC, not MinGW: ReShade's add-on API is C++ virtual classes whose layout depends on the compiler.
 - **ReShade's installer carries an appended zip** whose offsets count from the zip's own start: find the end record, compute the start,
   slice, then open it.
+- **`powershell -File` flattens arrays.** `Install.cmd -Only Valheim,Compositor` arrives as the single string "Valheim,Compositor";
+  split it inside the script (a `ValidateSet` on `[string[]]` rejects it).
 - **Windows PowerShell started from PowerShell 7** inherits its module path and loses `Get-FileHash`; the `.cmd` wrappers clear
   `PSModulePath` first.

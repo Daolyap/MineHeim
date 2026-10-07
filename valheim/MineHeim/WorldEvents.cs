@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 using MineHeim.Core;
 
@@ -23,7 +24,7 @@ namespace MineHeim
         private readonly RaycastHit[] _hits = new RaycastHit[24];
         private readonly List<int> _stale = new List<int>();
 
-        public int Explosions, Swings, ProjectileHits, ToolHits, StructureHits, Craters, Digs, MobHits;
+        public int Explosions, Swings, ProjectileHits, ToolHits, StructureHits, Craters, Digs, MobHits, WardSaved;
 
         private static readonly int StructureMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain", "vehicle");
         private static readonly int TerrainMask = LayerMask.GetMask("terrain");
@@ -196,8 +197,8 @@ namespace MineHeim
 
             int structures = ExplodeStructures(center, reach, strength);
             int craters = ExplodeTerrain(center, reach, radiusBlocks);
-            Plugin.Log.LogInfo(string.Format("explosion ({0}, radius {1:0.0}) at {2}: {3} character(s), {4} building piece(s)/tree(s)/rock(s), {5} terrain dig(s) in reach {6:0.0} m",
-                source, radiusBlocks, center, hurt, structures, craters, reach));
+            Plugin.Log.LogInfo(string.Format("explosion ({0}, radius {1:0.0}) at {2}: {3} character(s), {4} building piece(s)/tree(s)/rock(s), {5} terrain dig(s) in reach {6:0.0} m{7}",
+                source, radiusBlocks, center, hurt, structures, craters, reach, Plugin.WardsBlockExplosions.Value && InWard(center) ? " (inside a ward: buildings and ground spared)" : ""));
         }
 
         /// <summary>Buildings take blunt, trees chop, rocks and ore pickaxe damage: each through its own Damage, so materials, wards' rules and drops apply.</summary>
@@ -211,6 +212,7 @@ namespace MineHeim
 
             int n = Physics.OverlapSphereNonAlloc(center, reach, _overlap, StructureMask, QueryTriggerInteraction.Ignore);
             var seen = new HashSet<IDestructible>();
+            int damaged = 0;
             Player player = Player.m_localPlayer;
             for (int i = 0; i < n; i++)
             {
@@ -227,6 +229,12 @@ namespace MineHeim
                 }
 
                 Vector3 at = col.bounds.ClosestPoint(center);
+                if (Plugin.WardsBlockExplosions.Value && InWard(at))
+                {
+                    WardSaved++;
+                    continue;
+                }
+
                 float falloff = 1f - Vector3.Distance(center, at) / reach;
                 if (falloff <= 0f)
                 {
@@ -257,9 +265,10 @@ namespace MineHeim
 
                 target.Damage(hit);
                 StructureHits++;
+                damaged++;
             }
 
-            return seen.Count;
+            return damaged;
         }
 
         /// <summary>A crater where the blast meets Valheim's ground: the pickaxe's dig at the centre (twice, it is deepest there) and in a ring.</summary>
@@ -268,6 +277,12 @@ namespace MineHeim
             RaycastHit ground;
             if (!Plugin.ExplosionCraters.Value || !Physics.Raycast(center + Vector3.up * 2f, Vector3.down, out ground, 2f + reach * 0.5f, TerrainMask))
             {
+                return 0;
+            }
+
+            if (Plugin.WardsBlockExplosions.Value && InWard(ground.point))
+            {
+                WardSaved++;
                 return 0;
             }
 
@@ -316,15 +331,17 @@ namespace MineHeim
             Swings++;
             Vector3 eye = player.m_eye.position;
             Vector3 aim = GameCamera.instance.transform.forward;
-            if (item.EndsWith("_sword"))
+            bool isTool = item.EndsWith("_pickaxe") || item.EndsWith("_axe");
+            // anything Steve swings hits the creatures in front of him, for what it deals in Minecraft (a fist 1, a diamond sword 7,
+            // times how far the swing had recharged); a pickaxe or axe that hits no creature works on rocks, ore and trees instead
             {
                 int hurt = 0;
                 float damage = Dynamic(minecraftDamage, Plugin.MeleeDamage.Value);
                 foreach (Character c in new List<Character>(Character.GetAllCharacters()))
                 {
-                    if (c == null || c == player || c.IsDead() || MobBridge.IsBody(c))
+                    if (damage <= 0f || c == null || c == player || c.IsDead() || MobBridge.IsBody(c))
                     {
-                        continue; // (a Minecraft mob: Steve's sword hits it in Minecraft itself)
+                        continue; // (a Minecraft mob: Steve's hit lands on it in Minecraft itself)
                     }
 
                     // the nearest point of the creature, not its eyes: a Troll's head is 3 m above the Viking's
@@ -337,14 +354,29 @@ namespace MineHeim
                     }
 
                     HitData hit = MakeHit(target, new Vector3(aim.x, 0.1f, aim.z), 25f);
-                    hit.m_damage.m_slash = damage;
+                    if (item.EndsWith("_sword") || item.EndsWith("_axe"))
+                    {
+                        hit.m_damage.m_slash = damage;
+                    }
+                    else if (item.EndsWith("_pickaxe") || item.EndsWith("trident") || item.EndsWith("_spear"))
+                    {
+                        hit.m_damage.m_pierce = damage;
+                    }
+                    else
+                    {
+                        hit.m_damage.m_blunt = damage; // a fist, a block, a mace, a stick...
+                    }
+
                     hit.m_attacker = player.GetZDOID();
                     c.Damage(hit);
                     hurt++;
                 }
 
-                Plugin.Log.LogInfo(string.Format("sword swing: {0} creature(s) hit for {1:0.0} ({2:0.0} in Minecraft)", hurt, damage, minecraftDamage));
-                return;
+                if (hurt > 0 || !isTool)
+                {
+                    Plugin.Log.LogInfo(string.Format("{0} swing: {1} creature(s) hit for {2:0.0} ({3:0.00} in Minecraft)", item, hurt, damage, minecraftDamage));
+                    return;
+                }
             }
 
             // a pickaxe or an axe: the rock, ore or tree in front of the player
@@ -489,6 +521,19 @@ namespace MineHeim
                 {
                     Explode(hitPoint, 3f, 0.5f, "firework");
                 }
+                else if (chosen.collider.GetComponentInParent<IDestructible>() is IDestructible thing && !(thing is WearNTear))
+                {
+                    // birds, and anything else with health that isn't a creature: as a Valheim arrow would (buildings excepted)
+                    HitData hit = MakeHit(hitPoint, seg, 4f);
+                    hit.m_damage.m_pierce = Dynamic(p.Damage, Plugin.ArrowDamage.Value);
+                    if (Player.m_localPlayer != null)
+                    {
+                        hit.m_attacker = Player.m_localPlayer.GetZDOID();
+                    }
+
+                    thing.Damage(hit);
+                    Plugin.Log.LogInfo(string.Format("arrow hit a {0} ({1})", thing.GetDestructibleType(), chosen.collider.transform.root.name));
+                }
 
                 ProjectileHits++;
                 double mx, my, mz;
@@ -532,6 +577,24 @@ namespace MineHeim
         }
 
         // ------------------------------------------------------------------ helpers
+
+        private static readonly AccessTools.FieldRef<List<PrivateArea>> AllWards = AccessTools.StaticFieldRefAccess<List<PrivateArea>>(AccessTools.Field(typeof(PrivateArea), "m_allAreas"));
+
+        private static readonly System.Func<PrivateArea, bool> WardEnabled = AccessTools.MethodDelegate<System.Func<PrivateArea, bool>>(AccessTools.Method(typeof(PrivateArea), "IsEnabled"));
+
+        /// <summary>Inside the area of any active ward, whoever owns it (Valheim's own test: distance on the ground plane).</summary>
+        internal static bool InWard(Vector3 point)
+        {
+            foreach (PrivateArea ward in AllWards())
+            {
+                if (ward != null && WardEnabled(ward) && Utils.DistanceXZ(ward.transform.position, point) < ward.m_radius)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>Distance from `from` to the nearest point of the character's colliders (axis-aligned bounds), and that point.</summary>
         private static float DistanceTo(Character c, Vector3 from, out Vector3 closest)

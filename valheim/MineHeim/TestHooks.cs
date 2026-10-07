@@ -28,8 +28,20 @@ namespace MineHeim
         private List<int> _expected;
         private int _columns, _freshMatches;
 
+        // messages to Minecraft at set times ("mcattack": clicks closer together than a command file can be polled)
+        private readonly List<KeyValuePair<float, string>> _timed = new List<KeyValuePair<float, string>>();
+
         public void Tick(Player player, double yOffset)
         {
+            for (int i = _timed.Count - 1; i >= 0; i--)
+            {
+                if (Time.unscaledTime >= _timed[i].Key)
+                {
+                    Link.Send(_timed[i].Value);
+                    _timed.RemoveAt(i);
+                }
+            }
+
             if (Time.unscaledTime >= _nextPoll)
             {
                 _nextPoll = Time.unscaledTime + 0.5f;
@@ -156,6 +168,84 @@ namespace MineHeim
                         {
                             bool taken = player != null && stone.Interact(player, false, false);
                             Plugin.Log.LogInfo(string.Format("tombstone of {0} at {1}: {2}", stone.GetOwnerName(), stone.transform.position, taken ? "recovered" : "not taken"));
+                        }
+
+                        break;
+                    case "status5":
+                        Plugin.Log.LogInfo(string.Format(CultureInfo.InvariantCulture,
+                            "status5: mcMode={0} vikingHidden={1} creativeBlocked={2} wardSaved={3} cursorVisible={4} cursorLock={5} health={6:0.0} stamina={7:0.0} swings={8} lagFrames={9:0.0} leadMs={10:0} predict={11} screen={12} x={13:0.00} z={14:0.00}",
+                            InputBridge.McMode ? "on" : "off", PoseSender.VikingHidden, CreativeViking.Blocked, Plugin.Events.WardSaved, ZCursor.IsVisible ? "yes" : "no",
+                            Cursor.lockState, player != null ? player.GetHealth() : 0f, player != null ? player.GetStamina() : 0f, Plugin.Events.Swings,
+                            MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, Plugin.PredictMotion.Value ? "on" : "off", ScreenBridge.Open ? ScreenBridge.Name : "none",
+                            player != null ? player.transform.position.x : 0f, player != null ? player.transform.position.z : 0f));
+                        break;
+                    case "creativegod":
+                        // older tests measure damage in Creative: "creativegod off" lets it land again (not saved to the config)
+                        CreativeViking.TestOff = w.Length > 1 && w[1] == "off";
+                        Plugin.Log.LogInfo("creative invulnerability " + (CreativeViking.TestOff ? "off for tests" : "as configured"));
+                        break;
+                    case "predict":
+                        Plugin.PredictMotion.Value = !(w.Length > 1 && w[1] == "off");
+                        break;
+                    case "stamina":
+                        // use this much stamina, as a swing or a sprint would
+                        player?.UseStamina(w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 20f);
+                        break;
+                    case "move":
+                        // teleport the Viking dx, dz metres (Valheim axes), onto the ground there: "move 30 0"
+                        if (player != null)
+                        {
+                            Vector3 to = player.transform.position + new Vector3(w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 20f, 0f,
+                                                                                   w.Length > 2 ? float.Parse(w[2], CultureInfo.InvariantCulture) : 0f);
+                            RaycastHit down;
+                            if (Physics.Raycast(to + Vector3.up * 200f, Vector3.down, out down, 400f, LayerMask.GetMask("terrain")))
+                            {
+                                to.y = down.point.y + 0.3f;
+                            }
+
+                            player.TeleportTo(to, player.transform.rotation, false);
+                            Plugin.Log.LogInfo("moved to " + to);
+                        }
+
+                        break;
+                    case "turn":
+                        // turn the Viking (and the camera) by this many degrees
+                        player?.SetMouseLook(new Vector2(w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 90f, 0f));
+                        break;
+                    case "autorun":
+                        if (player != null)
+                        {
+                            player.m_autoRun = w.Length > 1 && w[1] == "on";
+                        }
+
+                        break;
+                    case "mccmd":
+                        Link.Send(Messages.Command(raw.Trim().Substring(5).Trim()));
+                        break;
+                    case "mcattack":
+                        // n attack clicks gapMs apart, as Minecraft mode forwards them: "mcattack 3 150"
+                        {
+                            int n = w.Length > 1 ? int.Parse(w[1], CultureInfo.InvariantCulture) : 2;
+                            float gap = (w.Length > 2 ? float.Parse(w[2], CultureInfo.InvariantCulture) : 150f) / 1000f;
+                            for (int i = 0; i < n; i++)
+                            {
+                                _timed.Add(new KeyValuePair<float, string>(Time.unscaledTime + i * gap, "{\"t\":\"key\",\"k\":\"attack\",\"down\":true}"));
+                                _timed.Add(new KeyValuePair<float, string>(Time.unscaledTime + i * gap + 0.03f, "{\"t\":\"key\",\"k\":\"attack\",\"down\":false}"));
+                            }
+                        }
+
+                        break;
+                    case "wardon":
+                        // the wards spawned with "spawn guard_stone <m>": switched on, as when a player places one
+                        foreach (GameObject g in _props)
+                        {
+                            PrivateArea ward = g != null ? g.GetComponent<PrivateArea>() : null;
+                            if (ward != null)
+                            {
+                                ward.Setup(Game.instance.GetPlayerProfile().GetName());
+                                HarmonyLib.AccessTools.Method(typeof(PrivateArea), "SetEnabled").Invoke(ward, new object[] { true });
+                                Plugin.Log.LogInfo("ward on at " + g.transform.position + ": inside=" + WorldEvents.InWard(g.transform.position));
+                            }
                         }
 
                         break;

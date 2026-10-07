@@ -3,6 +3,7 @@ package dev.daolyap.mineheim.client.mixin;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import dev.daolyap.mineheim.MineHeim;
 import dev.daolyap.mineheim.client.FrameExporter;
+import dev.daolyap.mineheim.client.HostView;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,6 +33,14 @@ abstract class GameRendererMixin {
 	)
 	private void mineheim$captureWorld(final CallbackInfo ci) {
 		FrameExporter.captureWorld(this.mainRenderTarget);
+	}
+
+	/** Steve's hand only in the host's Minecraft mode (out of it the host's own player holds what it holds). */
+	@Inject(method = "renderItemInHand", at = @At("HEAD"), cancellable = true)
+	private void mineheim$handOnlyAsSteve(final CallbackInfo ci) {
+		if (MineHeim.active && !HostView.steve) {
+			ci.cancel();
+		}
 	}
 
 	@Inject(method = "render", at = @At("TAIL"))

@@ -16,7 +16,7 @@ namespace MineHeim
     {
         public const string Guid = "dev.daolyap.mineheim";
         public const string Name = "MineHeim";
-        public const string Version = "0.9.0";
+        public const string Version = "0.9.1";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -47,7 +47,8 @@ namespace MineHeim
         internal static ConfigEntry<bool> MobsEnabled, MobsHunt, AutoStart, HideMinecraftWindow, QuitWithValheim;
         internal static ConfigEntry<string> LaunchCommand;
         internal static ConfigEntry<KeyCode> GameModeKey;
-        internal static ConfigEntry<float> WeaponDamageScale, MobRadius;
+        internal static ConfigEntry<float> WeaponDamageScale, MobRadius, WeaponPointDamage;
+        internal static ConfigEntry<bool> CreativeInvulnerable, WardsBlockExplosions, PredictMotion;
         internal static readonly MobBridge Mobs = new MobBridge();
 
         internal static readonly BarrierCells Cells = new BarrierCells();
@@ -66,13 +67,19 @@ namespace MineHeim
             Log = Logger;
             Enabled = Config.Bind("General", "Enabled", true, "Send Valheim's camera to Minecraft.");
             Port = Config.Bind("Link", "Port", 25599, "Port of the Minecraft mod's WebSocket link (127.0.0.1 only).");
+            PredictMotion = Config.Bind("Link", "PredictMotion", true,
+                "Minecraft's picture arrives a frame or two after Valheim's camera has moved on: send Minecraft where the camera and the Viking will be by " +
+                "the time its picture is shown, so Steve keeps up with the Viking while walking and running.");
             YOffset = Config.Bind("World", "YOffset", 70.0,
                 "Minecraft y = Valheim y + this. 70 puts Valheim's sea level (30) at Minecraft y=100. Keep it fixed: Minecraft's world persists, " +
                 "so changing it moves everything you built against Valheim's terrain.");
             ToggleKey = Config.Bind("Input", "ToggleKey", KeyCode.F7,
-                "Minecraft mode: while on, the mouse buttons, the wheel and the number keys 1-9 go to Minecraft (break, place, pick, hotbar) and Valheim's attack, block, hotbar and camera zoom are off.");
+                "Minecraft mode: on, you are Steve: he stands where the Viking stands, Minecraft's hotbar shows, and the mouse buttons, the wheel and the number keys 1-9 " +
+                "go to Minecraft (break, place, pick, hotbar). Off, you are the Viking again: Valheim's own body, hotbar and controls (Minecraft's blocks, mobs and items stay in the world).");
             HideViking = Config.Bind("Steve", "HideViking", true,
-                "Hide the Viking's body (not his held items or lights) while Minecraft is connected: Steve stands where he stands.");
+                "In Minecraft mode, hide the Viking's body (not his held items or lights): Steve stands where he stands.");
+            CreativeInvulnerable = Config.Bind("Steve", "CreativeInvulnerable", true,
+                "In Creative, while you are Steve (Minecraft mode on), the Viking takes no damage and uses no stamina, as in Minecraft's Creative.");
             StartInMinecraftMode = Config.Bind("Input", "StartInMinecraftMode", false, "Start every game in Minecraft mode.");
             GameModeKey = Config.Bind("Input", "GameModeKey", KeyCode.F8, "Switch Steve between Creative and Survival.");
             AutoStart = Config.Bind("Minecraft", "AutoStart", true,
@@ -101,9 +108,14 @@ namespace MineHeim
             ExplosionPush = Config.Bind("Events", "ExplosionPush", 60f, "Knockback force of a Minecraft explosion at its centre.");
             ExplosionReach = Config.Bind("Events", "ExplosionReach", 1.6f, "Metres of reach per block of explosion radius (TNT has radius 4).");
             HurtPlayer = Config.Bind("Events", "HurtPlayer", true, "Minecraft explosions hurt the Viking too.");
+            WeaponPointDamage = Config.Bind("Events", "WeaponPointDamage", 6f,
+                "Valheim damage per point of Minecraft weapon damage, at least: the rate is the Viking's max health / 20 when that is higher (it grows with food " +
+                "and progression). A fully charged diamond sword (7) deals 42, a fist (1) 6.");
             WeaponDamageScale = Config.Bind("Events", "WeaponDamageScale", 1f,
-                "Minecraft damage on Valheim creatures (Steve's sword and arrows, Minecraft mobs' hits) is its Minecraft damage times the Viking's max health / 20, " +
-                "times this: a diamond sword's 7 is 35 for a 100-health Viking. Valheim's hits on Minecraft mobs cross at the same rate the other way.");
+                "Minecraft damage on Valheim creatures (Steve's hits and arrows, Minecraft mobs' hits) is its Minecraft damage times the rate above, times this. " +
+                "Valheim's hits on Minecraft mobs cross at the same rate the other way.");
+            WardsBlockExplosions = Config.Bind("Events", "WardsBlockExplosions", true,
+                "Minecraft explosions do not damage buildings or dig craters inside an active ward (creatures are still hurt).");
             MeleeDamage = Config.Bind("Events", "SwordDamage", 35f, "Slash damage of a Minecraft sword swing on Valheim creatures, only if Minecraft does not report the swing's damage (an older mod).");
             MeleeReach = Config.Bind("Events", "MeleeReach", 3.6f, "Reach of a Minecraft sword, pickaxe or axe swing, metres from the Viking's eyes.");
             ToolDamage = Config.Bind("Events", "ToolDamage", 80f, "Pickaxe or chop damage of a Minecraft pickaxe or axe swing on a Valheim rock, ore or tree.");
@@ -179,6 +191,7 @@ namespace MineHeim
             Blocks.Clear();
             RequestBlockSync();
             SendGameMode();
+            InputBridge.SendSteve();
             Link.Send("{\"t\":\"mobfight\",\"on\":" + (MobsHunt.Value ? "true" : "false") + "}");
         }
 

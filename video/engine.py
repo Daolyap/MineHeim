@@ -242,7 +242,7 @@ _bg_cache: dict = {}
 
 
 def backdrop(kind: str = "night") -> Image.Image:
-    """Static backgrounds: a dark gradient with a faint block grid ('night'), or a blurred screenshot ('shot:<file>')."""
+    """Static backgrounds: a plain dark gradient ('night'), or a blurred screenshot ('shot:<file>')."""
     if kind in _bg_cache:
         return _bg_cache[kind]
     if kind.startswith("shot:"):
@@ -254,14 +254,10 @@ def backdrop(kind: str = "night") -> Image.Image:
     else:
         bg = Image.new("RGBA", (W, H), NIGHT + (255,))
         d = ImageDraw.Draw(bg)
+        # a plain vertical gradient: nothing behind the text to read against (the old block grid made text hard to read)
         for y in range(H):
             k = y / H
             d.line([(0, y), (W, y)], fill=(int(12 + 10 * k), int(15 + 8 * k), int(21 + 12 * k), 255))
-        g = 80
-        for x in range(0, W, g):
-            d.line([(x, 0), (x, H)], fill=(255, 255, 255, 9))
-        for y in range(0, H, g):
-            d.line([(0, y), (W, y)], fill=(255, 255, 255, 9))
     vign = Image.new("L", (W, H), 0)
     vd = ImageDraw.Draw(vign)
     for i in range(30):

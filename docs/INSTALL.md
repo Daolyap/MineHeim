@@ -45,8 +45,9 @@ That is the only time you see Prism. From now on Valheim starts it for you.
 Start Valheim from Steam as usual. A few seconds after the main menu, Minecraft starts by itself in the background (the first start
 downloads Minecraft and Fabric and takes a minute or two). Load a world: Steve appears where your Viking stands.
 
-- **F7** hands the mouse to Minecraft: left click breaks, right click places, 1-9 and the wheel pick Minecraft's hotbar,
-  **Tab** opens Minecraft's inventory (creative tabs in Creative), **T** its chat. F7 again gives everything back to Valheim.
+- **F7** makes you Steve: left click breaks and hits, right click places, 1-9 and the wheel pick Minecraft's hotbar,
+  **Tab** opens Minecraft's inventory (creative tabs in Creative), **T** its chat. F7 again and you are the Viking, with Valheim's
+  own controls; what you built stays. As Steve in Creative, nothing hurts you.
 - **F8** switches Steve between Creative and Survival.
 
 <img src="media/minecraft-inventory.png" alt="Minecraft's creative inventory over Valheim" width="640">

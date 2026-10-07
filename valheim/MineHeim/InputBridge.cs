@@ -59,8 +59,15 @@ namespace MineHeim
             McMode = on;
             _activeFrame = -1;
             ReleaseAll();
+            SendSteve();
             Plugin.Log.LogInfo("minecraft mode " + (on ? "ON" : "off") + " (" + why + ")");
-            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, on ? "Minecraft mode: on" : "Minecraft mode: off");
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, on ? "Minecraft mode on: you are Steve" : "Minecraft mode off: you are the Viking");
+        }
+
+        /// <summary>Minecraft shows Steve and its hotbar only in Minecraft mode (sent on every change and every new connection).</summary>
+        public static void SendSteve()
+        {
+            Link.Send("{\"t\":\"steve\",\"on\":" + (McMode ? "true" : "false") + "}");
         }
 
         /// <summary>Every frame, main thread.</summary>
@@ -76,6 +83,27 @@ namespace MineHeim
             {
                 Plugin.GameMode.Value = Plugin.GameMode.Value == Plugin.SteveMode.Creative ? Plugin.SteveMode.Survival : Plugin.SteveMode.Creative;
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, "Steve: " + Plugin.GameMode.Value);
+            }
+
+            // the Viking's E on a Minecraft chest, crafting table or furnace (nothing of Valheim's under the crosshair) opens it
+            Player local = Player.m_localPlayer;
+            if (!McMode && local != null && Link.Connected && !ScreenBridge.Open && Cursor.lockState == CursorLockMode.Locked &&
+                ZInput.GetButtonDown("Use"))
+            {
+                // Valheim reports whatever collider is in reach (the terrain, our own colliders for Minecraft's blocks): only
+                // something Valheim can interact with keeps the key for Valheim
+                GameObject hover = local.GetHoverObject();
+                if (hover != null && hover.GetComponentInParent<Interactable>() == null)
+                {
+                    hover = null;
+                }
+
+                if (hover == null)
+                {
+                    Link.Send("{\"t\":\"interact\"}");
+                }
+
+                Plugin.Log.LogInfo("use key as the Viking: " + (hover == null ? "nothing of Valheim's to use under the crosshair, asked Minecraft to open what is there" : "Valheim's " + hover.name));
             }
 
             if (!Active)

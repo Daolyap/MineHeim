@@ -44,18 +44,19 @@ You need Windows 10/11, **Valheim** on Steam and **Minecraft Java Edition** on y
    Prism Launcher with a ready "MineHeim" Minecraft instance.
 3. Prism Launcher opens once: sign in with the Microsoft account that owns Minecraft, then close it.
 
-Then just start Valheim. Minecraft starts by itself in the background and joins in. In a world, press **F7** to hand the mouse to Minecraft.
+Then just start Valheim. Minecraft starts by itself in the background and joins in. In a world, press **F7** to become Steve.
 Step-by-step with screenshots: [docs/INSTALL.md](docs/INSTALL.md). To remove it, double-click `Uninstall.cmd`.
 
 ## Controls
 
 | key | what it does |
 |---|---|
-| **F7** | Minecraft mode on/off. On: the mouse buttons break, place and use, the wheel and 1-9 pick Minecraft's hotbar, **Q** throws (Ctrl+Q the stack), **Tab** opens Minecraft's inventory, **T** its chat, **/** a command. Off: everything is Valheim's again. |
+| **F7** | Minecraft mode: you are Steve. The mouse buttons break, place and hit (anything in hand hits Valheim's creatures), the wheel and 1-9 pick Minecraft's hotbar, **Q** throws (Ctrl+Q the stack), **Tab** opens Minecraft's inventory, **T** its chat, **/** a command. F7 again: you are the Viking, with everything Valheim's (Minecraft's blocks, mobs and items stay). |
 | **F8** | Steve: Creative <-> Survival |
-| **Jump, Jump** (double-tap) | Creative: fly or land. Hold Jump to rise, Left Ctrl to sink, Run to go faster. |
+| **Jump, Jump** (double-tap, as Steve) | Creative: fly or land. Hold Jump to rise, Left Ctrl to sink, Run to go faster. |
 | **Right mouse, held** (Minecraft mode) | raise Minecraft's shield |
 | **drop an item** (Valheim inventory) | items with a Minecraft twin cross into Minecraft |
+| **E** on a Minecraft chest, crafting table or furnace | opens it, as the Viking too |
 | everything else | Valheim's own: walking, E, the camera, menus |
 
 All settings live in `Valheim\BepInEx\config\dev.daolyap.mineheim.cfg`; see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).

@@ -18,7 +18,7 @@ namespace MineHeim
 
         private static bool Applies(Character c)
         {
-            return Up && Plugin.ShieldEnabled.Value && Link.Connected && c != null && c == Player.m_localPlayer;
+            return Up && InputBridge.McMode && Plugin.ShieldEnabled.Value && Link.Connected && c != null && c == Player.m_localPlayer;
         }
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.IsBlocking))]

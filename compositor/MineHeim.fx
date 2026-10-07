@@ -39,7 +39,7 @@ uniform float LightTint < ui_type = "drag"; ui_min = 0.0; ui_max = 1.0; ui_step 
 uniform float LightBlur < ui_type = "drag"; ui_min = 1.0; ui_max = 6.0; ui_step = 0.1; ui_label = "Light blur (mip)"; > = 3.2;
 uniform float GradeMatch < ui_type = "drag"; ui_min = 0.0; ui_max = 1.0; ui_step = 0.01; ui_label = "Match Valheim colour grade";
 	ui_tooltip = "Give Minecraft the colour of Valheim's whole picture (a red Nether night, an orange sunset), as the game's own grading does to its world."; > = 0.55;
-uniform float HazeStart < ui_type = "drag"; ui_min = 0.0; ui_max = 200.0; ui_step = 1.0; ui_label = "Haze start (m)"; > = 15.0;
+uniform float HazeStart < ui_type = "drag"; ui_min = 0.0; ui_max = 200.0; ui_step = 1.0; ui_label = "Haze start (m)"; > = 40.0;
 uniform float HazeDistance < ui_type = "drag"; ui_min = 10.0; ui_max = 1000.0; ui_step = 1.0; ui_label = "Haze distance (m)";
 	ui_tooltip = "Far away, Minecraft fades into the Valheim picture around it (Valheim's haze and fog don't reach Minecraft otherwise)."; > = 160.0;
 uniform float HazeStrength < ui_type = "drag"; ui_min = 0.0; ui_max = 1.0; ui_step = 0.01; ui_label = "Haze strength"; > = 0.85;
@@ -122,7 +122,8 @@ float3 relight(float3 c, float2 uv, float zm)
 	const float3 grade = clamp(lerp(1.0, M / max(luma(M), 1e-3), 0.6), 0.6, 1.6);
 	c = lerp(c, c * grade, GradeMatch * (1.0 - saturate((max(c.r, max(c.g, c.b)) - 0.45) * 2.5)));
 	const float h = saturate((1.0 - exp(-max(zm - HazeStart, 0.0) / HazeDistance)) * HazeStrength);
-	const float3 H = tex2Dlod(sHostLight, float4(uv, 0, LightBlur + 1.0)).rgb;
+	// the haze is the picture's colour around there, blurred until no shape of what is behind shows (or the block looks see-through)
+	const float3 H = tex2Dlod(sHostLight, float4(uv, 0, LightBlur + 2.5)).rgb;
 	return lerp(c, H, h);
 }
 

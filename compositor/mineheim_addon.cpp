@@ -56,6 +56,9 @@ namespace
 	int32_t g_slots = 0;
 	int64_t g_stride = 0;
 	int64_t g_lastPublish = -1;
+	// the publish counter, watched on this side's clock: Minecraft closed or hung = its last picture must not stay on screen
+	int64_t g_lastPublishSeen = -1;
+	DWORD g_publishChangedTick = 0;
 	DWORD g_nextOpenAttempt = 0;
 	LARGE_INTEGER g_qpcFreq;
 
@@ -405,14 +408,27 @@ namespace
 			if (read_pose(0, newest))
 				g_newestPoseFrame = newest.frame;
 		}
+		bool mcFresh = false;
+		if (g_frameView != nullptr)
+		{
+			const int64_t published = read<int64_t>(g_frameView + 32);
+			if (published != g_lastPublishSeen)
+			{
+				g_lastPublishSeen = published;
+				g_publishChangedTick = GetTickCount();
+			}
+			mcFresh = GetTickCount() - g_publishChangedTick < 1500;
+		}
+		// in a world (1), no Valheim menu open (4: Minecraft's picture would cover it), Minecraft attached (8) and still
+		// publishing pictures (a closed or hung Minecraft leaves no frozen Steve behind)
 		if (on)
-			on = (host.flags & 1) != 0 && fresh;
+			on = (host.flags & 1) != 0 && (host.flags & 4) == 0 && (host.flags & 8) != 0 && fresh && mcFresh;
 		if (GetTickCount() >= g_nextStatus)
 		{
 			g_nextStatus = GetTickCount() + 5000;
 			char line[256];
-			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u -> active=%d",
-				(g_frameView != nullptr && g_poseView != nullptr) ? 1 : 0, host.valid ? 1 : 0, host.flags, fresh ? 1 : 0, g_hasFrame ? 1 : 0,
+			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u -> active=%d",
+				(g_frameView != nullptr && g_poseView != nullptr) ? 1 : 0, host.valid ? 1 : 0, host.flags, fresh ? 1 : 0, mcFresh ? 1 : 0, g_hasFrame ? 1 : 0,
 				int(g_renderFrame.load()), int(g_markerCalls.load()), (long long)host.frame, (long long)g_newestPoseFrame.load(), (long long)g_mcPose.frame, g_width, g_height,
 				(on && g_hasFrame) ? 1 : 0);
 			reshade::log::message(reshade::log::level::info, line);

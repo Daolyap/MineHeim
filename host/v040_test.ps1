@@ -67,6 +67,9 @@ function Send($json) { & $py "$repo\host\send.py" $json }
 function Shot($name) { um win shot --exe valheim.exe (Join-Path $Out "$name.png") 2>&1 | Out-Null }
 function Check($ok, $what) { if ($ok) { Write-Host "  PASS  $what" } else { Write-Host "  FAIL  $what"; $script:fails += $what } }
 
+PluginCmd 'creativegod off'              # 0.9.1: Creative protects the Viking; these checks measure damage
+PluginCmd 'move 60 0'                    # out of the start temple's no-build area (it refuses every dig)
+Start-Sleep 3
 PluginCmd 'nodeath on'                   # tests only: whatever hits the Viking leaves him at 1 health or more
 PluginCmd 'cleanup'
 PluginCmd 'gamemode creative'
@@ -211,17 +214,20 @@ PluginCmd 'cleanup'
 Write-Host '11. Survival: Minecraft''s hearts show the Viking''s health'
 PluginCmd 'gamemode survival'
 PluginCmd 'heal'
+$max = [double](Status2).health          # healed = his max health (0.9.1: the weapon rate is no longer max health / 20)
 PluginCmd 'hurt 6'
 Start-Sleep 2
 $h = Status2
 $q = Query
-$viking = [double]$h.health / ($rate * 20)
+$viking = [double]$h.health / $max
 $steve = [double]$q.hp / [double]$q.maxHp
 Check ($viking -lt 0.99 -and [math]::Abs($viking - $steve) -lt 0.03) ("Steve's hearts {0:P0} = the Viking's health {1:P0}" -f $steve, $viking)
 PluginCmd 'gamemode creative'
 PluginCmd 'heal'
 PluginCmd 'time -1'
 PluginCmd 'nodeath off'
+
+PluginCmd 'move -60 0'                   # back where the run started
 
 ""
 if ($fails.Count -eq 0) { 'RESULT: PASS' } else { "RESULT: FAIL ($($fails.Count)): " + ($fails -join '; ') }

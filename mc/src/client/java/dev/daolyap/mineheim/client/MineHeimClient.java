@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.CloudStatus;
 import net.minecraft.client.InactivityFpsLimit;
 import net.minecraft.client.Minecraft;
@@ -216,6 +217,8 @@ public class MineHeimClient implements ClientModInitializer {
 		options.damageTiltStrength().set(0.0);
 		options.menuBackgroundBlurriness().set(0);
 		options.enableVsync().set(false);
+		// the crosshair (and its attack-recharge mark) is the host's: show the recharge next to the hotbar instead
+		options.attackIndicator().set(AttackIndicatorStatus.HOTBAR);
 		// the host shows ~60-120 fps: rendering faster only competes with it for the GPU
 		options.framerateLimit().set(120);
 		options.save();

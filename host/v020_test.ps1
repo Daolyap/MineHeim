@@ -46,6 +46,9 @@ function Drive() { um win drive --proc valheim 'focus' @args 2>&1 | Out-Null; St
 function Shot($name) { um win shot --exe valheim.exe (Join-Path $Out "$name.png") 2>&1 | Out-Null }
 function Check($ok, $what) { if ($ok) { Write-Host "  PASS  $what" } else { Write-Host "  FAIL  $what"; $script:fails += $what } }
 
+PluginCmd 'creativegod off'              # 0.9.1: Creative protects the Viking; these checks measure damage
+PluginCmd 'move 60 0'                    # out of the start temple's no-build area (it refuses every dig)
+Start-Sleep 3
 PluginCmd 'nodeath on'                   # tests only: whatever hits the Viking (natural spawns too) leaves him at 1 health or more
 PluginCmd 'cleanup'
 PluginCmd 'gamemode creative'
@@ -92,7 +95,7 @@ Check ([int]$s1.digs -gt [int]$s0.digs) "the pickaxe dug Valheim's terrain (digs
 Shot 'pickaxe_dig'
 
 Write-Host '3. Creative flight'
-PluginCmd 'inputmode off'
+PluginCmd 'inputmode on'                  # 0.9.1: flight (and the shield) are Steve's, Minecraft mode only
 PluginCmd 'pitch 8'
 $s0 = Status
 Drive 'hold 0x20 120' 'hold 0x87 110' 'hold 0x20 120'      # double-tap Space
@@ -158,6 +161,8 @@ PluginCmd 'heal'
 PluginCmd 'time -1'
 PluginCmd 'pitch 6'
 PluginCmd 'nodeath off'
+
+PluginCmd 'move -60 0'                   # back where the run started
 
 ""
 if ($fails.Count -eq 0) { 'RESULT: PASS' } else { "RESULT: FAIL ($($fails.Count)): " + ($fails -join '; ') }

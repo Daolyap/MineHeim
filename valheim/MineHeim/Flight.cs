@@ -37,10 +37,10 @@ namespace MineHeim
                 return;
             }
 
-            bool allowed = Link.Connected && Plugin.GameMode.Value == Plugin.SteveMode.Creative && !player.IsDead();
+            bool allowed = Link.Connected && InputBridge.McMode && Plugin.GameMode.Value == Plugin.SteveMode.Creative && !player.IsDead();
             if (!allowed && Active)
             {
-                Stop(Link.Connected ? "not allowed now" : "Minecraft disconnected");
+                Stop(!Link.Connected ? "Minecraft disconnected" : !InputBridge.McMode ? "Minecraft mode off" : "not allowed now");
             }
 
             // double-tap Jump, only while the game has the mouse (no menu, inventory, chat or console open)

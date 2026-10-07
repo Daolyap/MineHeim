@@ -36,6 +36,9 @@ import org.java_websocket.server.WebSocketServer;
  * <li>{"t":"creatures","c":[[id,name,x,y,z,width,height],...]}: the host's creatures near its player (they stand here as CreatureProxy)</li>
  * <li>{"t":"mhit","id":mob,"amount":hp,"by":creature id,"player":bool}: the host hurt one of the mobs; {"t":"mobfight","on":bool}</li>
  * <li>{"t":"vstats","hp":0..1,"food":0..20}: the host's player's health and food, for Survival's hearts and hunger bar</li>
+ * <li>{"t":"steve","on":bool}: Minecraft mode in the host (Steve, his hand and the HUD show); {"t":"interact"}: the host's "use" on a container</li>
+ * <li>{"t":"heights","c":[x,z,cm,...]}: the host's exact ground per column (mobs and items are drawn standing on it)</li>
+ * <li>{"t":"window","hidden":bool,"host":pid,"quitWithHost":bool}: park the window; follow the host process</li>
  * </ul>
  * Minecraft to host: {"t":"hello",...} on connect, {"t":"ready"} when a Minecraft world has started (resend the ground), {"t":"explosion","pos":[x,y,z],"r":radius,"src":"tnt"},
  * {"t":"blocks","set":[x,y,z,...],"clear":[x,y,z,...]}, {"t":"proj","p":[[id,kind,x,y,z],...]},
@@ -77,6 +80,7 @@ public final class HostLink extends WebSocketServer {
 		MineHeim.LOG.info("host disconnected ({} {})", code, reason);
 		if (this.getConnections().isEmpty()) {
 			Creatures.clear(); // the host's creatures leave with it
+			HostView.clearHeights();
 			// and Minecraft's own window is shown again (the host may have hidden it)
 			Minecraft minecraft = Minecraft.getInstance();
 			minecraft.execute(() -> WindowParking.set(minecraft.getWindow().handle(), false));
@@ -95,6 +99,7 @@ public final class HostLink extends WebSocketServer {
 						WorldBridge.unsolid(ints(m.getAsJsonArray("r")));
 					}
 				}
+				case "heights" -> HostView.heights(ints(m.getAsJsonArray("c")));
 				case "probe" -> WorldBridge.probe(ints(m.getAsJsonArray("c")));
 				case "clear" -> WorldBridge.clearSolid();
 				case "cmd" -> WorldBridge.command(m.get("c").getAsString());

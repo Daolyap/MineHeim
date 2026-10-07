@@ -13,7 +13,8 @@ namespace MineHeim
     ///              its looks, AI, drops and sounds taken out): Valheim's creatures see it as an enemy and attack it, and the
     ///              Viking can hit it with his own weapons. Its hits go back to Minecraft ({"t":"mhit"}); the body never
     ///              loses health in Valheim, Minecraft owns the mob's health and the body only shows it.
-    /// Damage crosses at one exchange rate (Messages.HealthPerPoint): a Minecraft point is the Viking's max health / 20.
+    /// Damage crosses at the health rate (HealthRate: the Viking's max health / 20 per Minecraft point) between mobs and creatures,
+    /// and at the weapon rate (Rate: at least Events.WeaponPointDamage) for the player's own weapons.
     /// </summary>
     internal sealed class MobBridge
     {
@@ -42,7 +43,14 @@ namespace MineHeim
         /// <summary>One of Minecraft's mobs standing in Valheim (not a creature of Valheim's own).</summary>
         public static bool IsBody(Character c) => c != null && Bodies.Contains(c);
 
+        /// <summary>Valheim damage per point of the player's weapons: the health exchange rate, never under Events.WeaponPointDamage.</summary>
         public static double Rate()
+        {
+            return System.Math.Max(HealthRate(), Plugin.WeaponPointDamage.Value);
+        }
+
+        /// <summary>The health exchange rate (the Viking's max health / 20): Minecraft's mobs and Valheim's creatures fight at it.</summary>
+        public static double HealthRate()
         {
             Player p = Player.m_localPlayer;
             return Messages.HealthPerPoint(p != null ? p.GetMaxHealth() : 25f);
@@ -138,7 +146,7 @@ namespace MineHeim
                 return;
             }
 
-            float amount = (float)(Messages.DoubleValue(json, "amount", 0) * Rate() * Plugin.WeaponDamageScale.Value);
+            float amount = (float)(Messages.DoubleValue(json, "amount", 0) * HealthRate() * Plugin.WeaponDamageScale.Value);
             Vector3 dir = victim.transform.forward * -1f;
             double x, y, z;
             if (Messages.Pos(json, out x, out y, out z))
@@ -426,7 +434,7 @@ namespace MineHeim
             }
 
             bool byPlayer = attacker == Player.m_localPlayer;
-            double amount = total / Rate();
+            double amount = total / (byPlayer ? Rate() : HealthRate()); // the Viking's weapons at the weapon rate, creatures at the health rate
             Link.Send(Messages.MobHit(id, amount, byPlayer ? -1 : attacker.GetInstanceID(), byPlayer));
             HitsToMinecraft++;
             if (DamageText.instance != null)

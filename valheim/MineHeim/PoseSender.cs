@@ -57,9 +57,10 @@ namespace MineHeim
             return GameCamera.instance != null && DistanceField != null ? (float)DistanceField.GetValue(GameCamera.instance) : -1f;
         }
 
-        // Steve stands where the Viking stands: while Minecraft is connected the Viking's body is hidden (re-checked twice a
+        // Steve stands where the Viking stands: in Minecraft mode the Viking's body is hidden (re-checked twice a
         // second, since equipment and armour swap renderers). Only skinned meshes: held items and their lights stay.
         private readonly System.Collections.Generic.List<SkinnedMeshRenderer> _hidden = new System.Collections.Generic.List<SkinnedMeshRenderer>();
+        internal static int VikingHidden; // renderers hidden right now (status5)
         private float _nextVikingCheck;
 
         private void UpdateVikingVisibility(Player player)
@@ -70,7 +71,8 @@ namespace MineHeim
             }
 
             _nextVikingCheck = Time.unscaledTime + 0.5f;
-            bool hide = player != null && Plugin.HideViking.Value && Link.Connected;
+            bool hide = player != null && Plugin.HideViking.Value && Link.Connected && InputBridge.McMode;
+            VikingHidden = hide ? _hidden.Count : 0;
             if (hide)
             {
                 GameObject visual = player.GetVisual();
@@ -103,6 +105,7 @@ namespace MineHeim
         }
 
         private bool _hadPlayer;
+        private readonly System.Collections.Generic.List<int> _heights = new System.Collections.Generic.List<int>();
         private readonly System.Collections.Generic.List<int> _barrierAdd = new System.Collections.Generic.List<int>(), _barrierRemove = new System.Collections.Generic.List<int>();
         private Vector3 _lastSyncPos;
         private float _lastSyncTime;
@@ -169,8 +172,11 @@ namespace MineHeim
             {
                 if (Player.m_localPlayer != null)
                 {
-                    Plugin.Log.LogInfo(string.Format("perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}",
-                        _perfFrames / (Time.unscaledTime - _perfStart), _frame - _perfCamStart, Link.Connected ? "up" : "down", _viewW, _viewH));
+                    float offset = MotionPrediction.TakeOffset();
+                    Plugin.Log.LogInfo(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                        "perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}, minecraft {5:0.0} frame(s) behind, steve lead {6:0} ms, steve offset {7}",
+                        _perfFrames / (Time.unscaledTime - _perfStart), _frame - _perfCamStart, Link.Connected ? "up" : "down", _viewW, _viewH,
+                        MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, offset < 0f ? "n/a" : (offset * 100f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " cm"));
                 }
 
                 _perfStart = Time.unscaledTime;
@@ -230,6 +236,12 @@ namespace MineHeim
                     Link.Send(Messages.Ground(_barrierAdd, _barrierRemove));
                     _barrierAdd.Clear();
                     _barrierRemove.Clear();
+                }
+
+                if (Plugin.Ground.DrainHeights(_heights))
+                {
+                    Link.Send("{\"t\":\"heights\",\"c\":[" + string.Join(",", _heights) + "]}");
+                    _heights.Clear();
                 }
 
                 // Minecraft's world persists, Valheim's colliders do not: refresh them when the player has moved on
@@ -309,15 +321,25 @@ namespace MineHeim
             Mapping.Position(p.x, p.y, p.z, yOffset, out mx, out my, out mz);
             Mapping.Orientation(f.x, f.y, f.z, u.x, u.y, u.z, out yaw, out pitch, out roll);
 
-            Vector3 feet = player.transform.position, body = player.transform.forward;
+            Vector3 body = player.transform.forward;
+            Vector3 feet = MotionPrediction.Feet(_frame + 1, player.transform.position);
+            if (player.IsSwimming() && player.m_eye != null)
+            {
+                // a swimming Viking keeps his head above the water and his feet far below it: Steve's eyes go where his are
+                // (from the feet, Steve's eyes would be under the surface and Valheim's water would hide all of him)
+                feet.y = player.m_eye.position.y - 1.62f;
+            }
             double fx, fy, fz;
             Mapping.Position(feet.x, feet.y, feet.z, yOffset, out fx, out fy, out fz);
             bool firstPerson = DistanceField != null && (float)DistanceField.GetValue(gameCamera) <= 0.01f;
 
             _frame++;
             // for the compositor: this frame's pose, and a marker that tells it (on the render thread) which frame is being drawn
+            // flags: 1 in a world, 2 first person, 4 a Valheim menu is open (the compositor steps aside: Minecraft's picture would
+            // cover it), 8 Minecraft is attached
+            bool valheimUi = Cursor.lockState != CursorLockMode.Locked && !ScreenBridge.Open;
             HostPoseShm.Write(_frame, mx, my, mz, (float)yaw, (float)pitch, (float)roll, cam.fieldOfView, cam.nearClipPlane, cam.farClipPlane,
-                1 | (firstPerson ? 2 : 0), System.Diagnostics.Stopwatch.GetTimestamp());
+                1 | (firstPerson ? 2 : 0) | (valheimUi ? 4 : 0) | (Link.Connected ? 8 : 0), System.Diagnostics.Stopwatch.GetTimestamp());
             UpdateMarker(cam, _frame);
             if (Link.Connected)
             {

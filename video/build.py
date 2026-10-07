@@ -3,6 +3,7 @@
     python video/build.py stills            contact sheets of every rendered segment (quick look, no video)
     python video/build.py general|technical  render that video: segments, slot slates, overlays, full-length draft, script
     python video/build.py all                both videos and the thumbnails
+    python video/build.py sound [video]      only the synthesised soundtrack, muxed onto drafts already rendered
 
 Output in video/out/<video>/ (gitignored): NN_<name>.mp4 segments, NN_slot_<id>.mp4 placeholder slates, overlays/*.mov
 (transparent lower thirds, ProRes 4444), <video>_draft.mp4 (everything in order, slates where your footage goes) and
@@ -120,7 +121,54 @@ def build(name: str, only_stills=False):
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS), "-movflags", "+faststart", str(draft)],
                    check=True, cwd=out)
+    soundtrack(name, items, out, draft)
     print(f"{name}: {timestamp(t)} -> {draft}")
+
+
+# ------------------------------------------------------------------ the soundtrack (video/audio.py: synthesised, no samples)
+
+# how busy the music is under each kind of segment (0 calm .. 1 full): explainers stay quiet, montages and stings lift
+ENERGY = {"hook": 0.9, "logo": 1.0, "feature": 0.8, "chapter": 0.55, "outro": 0.7, "tech_title": 0.6, "built_with_ai": 0.4}
+
+
+def soundtrack(name: str, items, out: Path, draft: Path):
+    """Music + sound effects for the whole video, ducked under every voiceover line, muxed into the draft."""
+    import audio
+    spans, cues, t = [], [], 0.0
+    for i, it in enumerate(items):
+        dur = it.scene.duration if isinstance(it, Seg) else it.seconds
+        kind = it.scene.name if isinstance(it, Seg) else "slot"
+        e = next((v for k, v in ENERGY.items() if kind.startswith(k)), 0.85 if kind == "slot" and name == "general" else 0.3)
+        spans.append((t, t + dur, e))
+        if i > 0:
+            cues.append((max(0.0, t - 0.35), "whoosh", 0.5))
+        if kind.startswith("logo"):
+            cues += [(t + 0.15, "boom", 0.35), (t + 0.25, "chime", 0.8)]
+        elif kind.startswith("feature"):
+            cues += [(t + 0.1, "tick", 0.8), (t + 0.15, "thump", 0.6)]
+        elif kind.startswith("chapter"):
+            cues.append((t + 0.1, "chime", 0.35))
+        elif kind.startswith("hook"):
+            cues.append((t, "thump", 0.8))
+        if it.vo:
+            words = len(it.vo.split())
+            it._vo_span = (t + 0.2, t + 0.2 + min(dur - 0.2, words / 2.6))  # ~156 words a minute
+        t += dur
+    speech = [it._vo_span for it in items if getattr(it, "_vo_span", None)]
+
+    def energy(x):
+        for a, b, e in spans:
+            if a <= x < b:
+                return e
+        return 0.3
+
+    wav = out / f"{name}_soundtrack.wav"
+    print("soundtrack", wav.name, flush=True)
+    audio.write_wav(wav, audio.mix_track(t, energy, cues, speech))
+    muxed = out / f"{name}_draft_av.mp4"
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(draft), "-i", str(wav), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+                    "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(muxed)], check=True)
+    muxed.replace(draft)
 
 
 def thumbnails():
@@ -140,5 +188,9 @@ if __name__ == "__main__":
         thumbnails()
         for v in VIDEOS:
             build(v)
+    elif what == "sound":
+        # only the soundtrack, onto drafts already rendered: python video/build.py sound [general|technical]
+        for v in (sys.argv[2:] or list(VIDEOS)):
+            soundtrack(v, VIDEOS[v](), OUT / v, OUT / v / f"{v}_draft.mp4")
     else:
         build(what)

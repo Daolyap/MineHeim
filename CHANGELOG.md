@@ -1,7 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.9.1 — fixes from the first real play test
 
+- **F7 now switches who you are.** Off: you are the Viking (his own body, hotbar and controls; Minecraft's blocks, mobs and items stay
+  in the world). On: you are Steve (Minecraft's hotbar, hand and controls; flight and the shield). The game starts as the Viking.
+- **Creative protects the Viking** while you are Steve: no damage, no stamina used (`Steve.CreativeInvulnerable`). Not Valheim's own
+  god mode, so drops still count.
+- **Hit with anything:** every swing deals the held item's Minecraft damage (fist 1, diamond sword 7, ...), scaled by the recharge
+  exactly as Minecraft scales it, so rapid clicking is weak. One point is at least 6 Valheim damage (`Events.WeaponPointDamage`), more
+  for a well-fed Viking. The recharge shows next to Minecraft's hotbar.
+- **Wards stop explosion damage** to buildings and the ground (`Events.WardsBlockExplosions`).
+- **Steve keeps up when you walk or run:** the Viking's position is sent ahead by the measured delay of Minecraft's picture.
+- **Valheim's menus are never drawn under Minecraft:** while one is open (pause, inventory, map, ...) Minecraft's picture steps aside.
+- **No frozen Steve:** if Minecraft closes or hangs, its picture goes within 1.5 s.
+- **Minecraft follows Valheim out:** it saves and quits when Valheim quits, crashes or is ended in Task Manager; if anything keeps it
+  alive, it ends itself a minute later. (A Java process used to stay behind.)
+- **Minecraft's screens:** a cursor is shown; Backspace, Delete, the arrows and Ctrl+A/C/V work in its chat and text boxes.
+- **E as the Viking opens a Minecraft chest**, crafting table or furnace under the crosshair.
+- Minecraft's mobs and items stand on Valheim's real ground (not up to a block inside it); Steve stays visible while swimming;
+  middle-click no longer picks the invisible barrier ground; distant blocks no longer look see-through.
+- `Install-MineHeim.ps1 -Only Valheim,Compositor` works through `Install.cmd` too (the list arrived as one word).
 - **Building from a clone just works:** `Install-MineHeim.ps1` builds whatever is not built yet before installing; `-Build` rebuilds,
   `-Only Valheim|Compositor|Minecraft` limits it to the parts you name. `tools\build.ps1` finds the .NET SDK, a JDK 25, MSVC and
   your Valheim install (any Steam library) itself, and names the install command for anything missing. A plain `dotnet build`

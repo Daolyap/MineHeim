@@ -12,6 +12,7 @@ namespace MineHeim
     ///
     /// A column's barrier is the two cells just under the surface (Minecraft y = floor(surface + offset) - 1 and below):
     /// terrain heights are not whole numbers, so a block placed on it sits up to 1 m into the ground, never floating above it.
+    /// The exact surface height goes along too ({"t":"heights"}): Minecraft draws its mobs and items standing on it, not on the barrier.
     /// </summary>
     internal sealed class GroundProbe
     {
@@ -20,6 +21,8 @@ namespace MineHeim
 
         private readonly BarrierCells _cells;
         private readonly Dictionary<long, int> _sent = new Dictionary<long, int>(); // column -> barrier top cell sent
+        private readonly Dictionary<long, int> _heightSent = new Dictionary<long, int>(); // column -> surface sent (Minecraft y, cm)
+        private readonly List<int> _heights = new List<int>(); // x, z, cm of the columns whose surface changed
         private readonly RaycastHit[] _hits = new RaycastHit[16];
         private int _outerIndex, _innerIndex;
 
@@ -37,6 +40,8 @@ namespace MineHeim
         public void Reset()
         {
             _sent.Clear();
+            _heightSent.Clear();
+            _heights.Clear();
             _outerIndex = _innerIndex = 0;
         }
 
@@ -77,8 +82,22 @@ namespace MineHeim
                     _cells.Forget(x, top - 1, z);
                     _cells.Forget(x, top, z);
                     _sent.Remove(key);
+                    _heightSent.Remove(key);
                 }
             }
+        }
+
+        /// <summary>The columns whose exact surface changed since the last call, as x, z, Minecraft y in cm; false if none.</summary>
+        public bool DrainHeights(List<int> into)
+        {
+            if (_heights.Count == 0)
+            {
+                return false;
+            }
+
+            into.AddRange(_heights);
+            _heights.Clear();
+            return true;
         }
 
         private void ProbeBatch(int cx, int cz, float playerY, double yOffset, int count, int radius, ref int index)
@@ -121,6 +140,16 @@ namespace MineHeim
                     }
 
                     continue;
+                }
+
+                int cm = Mathf.RoundToInt((float)((surface + yOffset) * 100.0));
+                int oldCm;
+                if (!_heightSent.TryGetValue(key, out oldCm) || Mathf.Abs(oldCm - cm) > 2)
+                {
+                    _heightSent[key] = cm;
+                    _heights.Add(bx);
+                    _heights.Add(bz);
+                    _heights.Add(cm);
                 }
 
                 int top = Mathf.FloorToInt((float)(surface + yOffset)) - 1;

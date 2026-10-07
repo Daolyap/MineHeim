@@ -12,20 +12,23 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Minecraft.HideWindow` | on | keep Minecraft's own window behind Valheim and out of the taskbar and Alt-Tab while attached |
 | `Minecraft.QuitWithValheim` | on | Minecraft saves and quits when Valheim closes |
 | **Input** | | |
-| `Input.ToggleKey` | F7 | Minecraft mode on/off |
+| `Input.ToggleKey` | F7 | Minecraft mode: on, you are Steve (Minecraft's hotbar and controls); off, the Viking |
 | `Input.GameModeKey` | F8 | Steve: Creative <-> Survival |
 | `Input.StartInMinecraftMode` | off | start every game in Minecraft mode |
 | **Steve** | | |
 | `Steve.GameMode` | Creative | Creative: builder's kit and flight; Survival: Minecraft's rules, no flight. Valheim owns health in both |
 | `Steve.FlySpeed` | 11 | Creative flight speed in m/s (Run = 2.5x) |
-| `Steve.HideViking` | on | hide the Viking's body (not his held items or lights) while Minecraft is connected |
+| `Steve.HideViking` | on | in Minecraft mode, hide the Viking's body (not his held items or lights) |
+| `Steve.CreativeInvulnerable` | on | in Creative, as Steve: no damage and no stamina used |
 | **Shield** | | |
 | `Shield.Enabled` | on | a raised Minecraft shield blocks Valheim attacks |
 | `Shield.BlockFraction` | 1 | share of a blockable hit from the front that it stops (1 = all, no stamina) |
 | `Shield.ReflectFraction` | 0.5 | share of the blocked damage thrown back at the attacker |
 | `Shield.StaggerAttacker` | on | every block is a perfect parry: the attacker staggers |
 | **Events** (Minecraft acting on Valheim) | | |
-| `Events.WeaponDamageScale` | 1 | Minecraft damage on Valheim creatures = Minecraft damage x (Viking's max health / 20) x this |
+| `Events.WeaponPointDamage` | 6 | Valheim damage per Minecraft damage point, at least (the Viking's max health / 20 when higher): a diamond sword's 7 is 42 |
+| `Events.WeaponDamageScale` | 1 | Minecraft damage on Valheim creatures = Minecraft damage x the rate above x this |
+| `Events.WardsBlockExplosions` | on | explosions spare buildings and the ground inside an active ward (creatures are still hurt) |
 | `Events.MinecraftDamageShare` | 1 | a Minecraft mob's hit takes this times its share of Steve's 20 from the Viking's max health (0 = harmless) |
 | `Events.ExplosionDamage`, `ExplosionPush`, `ExplosionReach` | 60, 60, 1.6 | a Minecraft explosion's damage and knockback on creatures, and metres of reach per block of radius |
 | `Events.HurtPlayer` | on | Minecraft explosions hurt the Viking too |
@@ -55,6 +58,7 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Blocks.MaxColliders` | 3000 | at most this many Minecraft blocks become colliders in Valheim |
 | `World.YOffset` | 70 | Minecraft y = Valheim y + this. Keep it fixed: Minecraft's world persists |
 | `Link.Port` | 25599 | the local port of the link (the Minecraft side reads `-Dmineheim.port`) |
+| `Link.PredictMotion` | on | send Minecraft where the Viking will be when its picture is shown, so Steve keeps up when walking |
 | `General.Enabled` | on | send Valheim's camera to Minecraft |
 | `Debug.PillarTest` | F9 | alignment test pillar (developers) |
 

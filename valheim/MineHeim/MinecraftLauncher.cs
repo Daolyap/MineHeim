@@ -27,7 +27,9 @@ namespace MineHeim
                 if (!_toldHidden)
                 {
                     _toldHidden = true;
-                    Link.Send("{\"t\":\"window\",\"hidden\":" + (Plugin.HideMinecraftWindow.Value ? "true" : "false") + "}");
+                    // and: if Valheim goes without saying so (a crash, Task Manager), Minecraft follows it when QuitWithValheim is on
+                    Link.Send("{\"t\":\"window\",\"hidden\":" + (Plugin.HideMinecraftWindow.Value ? "true" : "false") +
+                              ",\"host\":" + Process.GetCurrentProcess().Id + ",\"quitWithHost\":" + (Plugin.QuitWithValheim.Value ? "true" : "false") + "}");
                 }
 
                 return;

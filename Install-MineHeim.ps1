@@ -15,7 +15,7 @@
   Valheim side; add -IncludeMinecraft to remove the Prism Launcher and its MineHeim instance (and that instance's world) too.
 
   Release zip or source? The release zip is prebuilt: nothing to build. In a copy of the source (git clone) whatever is
-  not built yet is built first (tools\build.ps1: .NET SDK, JDK 25 and MSVC, each found automatically; it tells you what
+  not built yet, or was edited since its last build, is built first (tools\build.ps1: .NET SDK, JDK 25 and MSVC, each found automatically; it tells you what
   to install if one is missing). -Build rebuilds even what is already built: use it after changing code.
   -Only installs (and builds) just the parts you name: Valheim (BepInEx + plugin), Compositor (ReShade + add-on),
   Minecraft (Prism + the instance's mod jars).
@@ -29,10 +29,13 @@
   .\Install-MineHeim.ps1 -Remove
 #>
 param([string]$ValheimDir, [switch]$Remove, [switch]$Force, [switch]$NoMinecraft, [switch]$IncludeMinecraft,
-      [switch]$Build, [ValidateSet('Valheim', 'Compositor', 'Minecraft')][string[]]$Only)
+      [switch]$Build, [string[]]$Only)
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $source = Test-Path (Join-Path $here 'valheim\MineHeim\MineHeim.csproj')
+# "-Only Valheim,Minecraft" arrives as one string through Install.cmd (powershell -File): split it here
+$Only = @($Only | ForEach-Object { $_ -split '[,; ]+' } | Where-Object { $_ })
+foreach ($p in $Only) { if ($p -notin 'Valheim', 'Compositor', 'Minecraft') { throw "-Only takes Valheim, Compositor and/or Minecraft, not '$p'." } }
 $parts = if ($Only) { $Only } elseif ($NoMinecraft) { @('Valheim', 'Compositor') } else { @('Valheim', 'Compositor', 'Minecraft') }
 
 function Find-Valheim {
@@ -81,10 +84,18 @@ if ($found) {
 
 # a copy of the source: build what is missing (or everything asked for, with -Build)
 if ($source) {
+    # built = the output exists and is newer than every source file of that part (an edit since means: build again)
+    function Test-Fresh($output, $sources) {
+        $out = Get-ChildItem $output -ErrorAction SilentlyContinue | Where-Object Name -notmatch 'sources' | Sort-Object LastWriteTime | Select-Object -Last 1
+        if (-not $out) { return $false }
+        $newest = Get-ChildItem $sources -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch '\\(bin|obj|build)\\' } | Sort-Object LastWriteTime | Select-Object -Last 1
+        return -not $newest -or $newest.LastWriteTime -le $out.LastWriteTime
+    }
     $built = @{
-        Valheim    = { Test-Path (Join-Path $here 'valheim\MineHeim\bin\Release\net472\MineHeim.dll') }
-        Compositor = { Test-Path (Join-Path $here 'compositor\build\MineHeim.addon64') }
-        Minecraft  = { [bool](Get-ChildItem (Join-Path $here 'mc\build\libs') -Filter 'mineheim-*.jar' -ErrorAction SilentlyContinue | Where-Object Name -notmatch 'sources') }
+        Valheim    = { Test-Fresh (Join-Path $here 'valheim\MineHeim\bin\Release\net472\MineHeim.dll') @((Join-Path $here 'valheim\MineHeim'), (Join-Path $here 'valheim\Core')) }
+        Compositor = { Test-Fresh (Join-Path $here 'compositor\build\MineHeim.addon64') @((Join-Path $here 'compositor\mineheim_addon.cpp')) }
+        Minecraft  = { Test-Fresh (Join-Path $here 'mc\build\libs\mineheim-*.jar') @((Join-Path $here 'mc\src'), (Join-Path $here 'mc\gradle.properties'), (Join-Path $here 'mc\build.gradle')) }
     }
     $toBuild = @($parts | Where-Object { $Build -or -not (& $built[$_]) })
     if ($toBuild) {

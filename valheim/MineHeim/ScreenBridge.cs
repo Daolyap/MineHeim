@@ -70,7 +70,9 @@ namespace MineHeim
                 return;
             }
 
+            // Minecraft draws no cursor of its own into its picture (SDL shows the system's): Valheim's stands in
             ZCursor.LockState = CursorLockMode.None;
+            ZCursor.Show();
             Mouse mouse = Mouse.current;
             Keyboard keyboard = Keyboard.current;
             int mods = Mods(keyboard);
@@ -93,6 +95,13 @@ namespace MineHeim
                 {
                     Link.Send("{\"t\":\"mscroll\",\"d\":" + (wheel > 0f ? "1" : "-1") + "}");
                 }
+            }
+
+            // text typed this frame goes before this frame's keys: "...16" then Enter must not run the command without the "16"
+            while (Typed.Count > 0)
+            {
+                Chars++;
+                Link.Send("{\"t\":\"char\",\"c\":" + (int)Typed.Dequeue() + "}");
             }
 
             if (keyboard != null)
@@ -118,12 +127,6 @@ namespace MineHeim
                         Link.Send("{\"t\":\"kpress\",\"k\":" + code + ",\"down\":" + (down ? "true" : "false") + ",\"mods\":" + mods + "}");
                     }
                 }
-            }
-
-            while (Typed.Count > 0)
-            {
-                Chars++;
-                Link.Send("{\"t\":\"char\",\"c\":" + (int)Typed.Dequeue() + "}");
             }
         }
 
@@ -223,6 +226,7 @@ namespace MineHeim
                 }
 
                 ZCursor.LockState = CursorLockMode.None;
+                ZCursor.Show();
                 return false;
             }
         }
