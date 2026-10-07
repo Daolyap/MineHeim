@@ -25,14 +25,7 @@ $fabricApi = [regex]::Match($props, '(?m)^fabric_api_version=(.+)$').Groups[1].V
 $pluginVersion = [regex]::Match((Get-Content (Join-Path $repo 'valheim\MineHeim\Plugin.cs') -Raw), 'Version = "([^"]+)"').Groups[1].Value
 if ($pluginVersion -ne $version) { throw "Version mismatch: mod $version, plugin $pluginVersion" }
 
-if (-not $NoBuild) {
-    if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "$env:USERPROFILE\tools\jdk-25" }
-    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { $env:DOTNET_ROOT = "$env:USERPROFILE\tools\dotnet"; $env:PATH = "$env:DOTNET_ROOT;$env:PATH" }
-    Push-Location (Join-Path $repo 'mc'); try { .\gradlew.bat --console=plain build; if ($LASTEXITCODE) { throw 'gradle build failed' } } finally { Pop-Location }
-    dotnet build (Join-Path $repo 'valheim\MineHeim\MineHeim.csproj') -c Release -v q --nologo; if ($LASTEXITCODE) { throw 'plugin build failed' }
-    Push-Location (Join-Path $repo 'valheim\Core.Tests'); try { dotnet run -c Release; if ($LASTEXITCODE) { throw 'Core.Tests failed' } } finally { Pop-Location }
-    & (Join-Path $repo 'compositor\build.ps1')
-}
+if (-not $NoBuild) { & (Join-Path $repo 'tools\build.ps1') -Test }
 
 $name = "MineHeim-$version"
 $out = Join-Path $repo "dist\$name"

@@ -13,7 +13,11 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
 
+  <!-- Valheim: -p:ValheimDir=..., else the main Steam folder from the registry, else Steam's default folder.
+       Install-MineHeim.ps1 -Build also searches every Steam library and passes the one it finds. -->
   <PropertyGroup>
+    <SteamDir>$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Valve\Steam', 'SteamPath'))</SteamDir>
+    <ValheimDir Condition="'$(ValheimDir)' == '' and '$(SteamDir)' != '' and Exists('$(SteamDir)\steamapps\common\Valheim\valheim.exe')">$(SteamDir)\steamapps\common\Valheim</ValheimDir>
     <ValheimDir Condition="'$(ValheimDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimDir>
     <BepInExCore Condition="'$(BepInExCore)' == ''">$(MSBuildThisFileDirectory)..\..\third_party\BepInExPack_Valheim\BepInExPack_Valheim\BepInEx\core</BepInExCore>
     <GameManaged>$(ValheimDir)\valheim_Data\Managed</GameManaged>
@@ -38,5 +42,13 @@
     <Reference Include="Unity.InputSystem"><HintPath>$(GameManaged)\Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(GameManaged)\UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
+
+  <!-- one clear message instead of a couple of hundred "type not found" errors -->
+  <Target Name="CheckGameAndBepInEx" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(GameManaged)\assembly_valheim.dll')"
+           Text="Valheim not found in '$(ValheimDir)'. Easiest: .\Install-MineHeim.ps1 -Build (it searches every Steam library). Or: dotnet build -c Release -p:ValheimDir=&quot;D:\SteamLibrary\steamapps\common\Valheim&quot;" />
+    <Error Condition="!Exists('$(BepInExCore)\BepInEx.dll')"
+           Text="BepInEx pack not found in '$(BepInExCore)'. Run .\valheim\fetch_deps.ps1 first (or .\Install-MineHeim.ps1 -Build, which does it)." />
+  </Target>
 
 </Project>

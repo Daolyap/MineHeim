@@ -85,13 +85,24 @@ The full technical breakdown, with diagrams: [docs/HOW-IT-WORKS.md](docs/HOW-IT-
 
 ## Building from source
 
+From a clone, the installer builds whatever is not built yet and then installs it:
+
 ```powershell
-cd mc; .\gradlew.bat build                           # the Minecraft mod (JDK 25)
-cd valheim\Core.Tests; dotnet run -c Release          # unit tests (no game needed)
-cd valheim\MineHeim; dotnet build -c Release          # the Valheim plugin (reads your Valheim install)
-python tools\get_msvc.py; .\compositor\build.ps1      # the ReShade add-on (portable MSVC, no admin)
-.\tools\make_release.ps1                              # everything, packaged as dist\MineHeim-<version>.zip
+.\Install-MineHeim.ps1                        # first time: builds all three parts, installs everything
+.\Install-MineHeim.ps1 -Build -Only Valheim    # after changing the plugin: rebuild + reinstall just that
+.\Install-MineHeim.ps1 -Build -Only Minecraft  # after changing the Fabric mod: rebuild + update Prism's instance
+.\tools\build.ps1 -Test                       # build only (plus the unit tests), install nothing
+.\tools\make_release.ps1                      # build everything, packaged as dist\MineHeim-<version>.zip
 ```
+
+`-Only` takes `Valheim` (BepInEx + plugin), `Compositor` (ReShade + add-on) and `Minecraft`, in any combination. What the build
+needs, each found automatically (it tells you the install command if one is missing):
+
+| Part | Needs | Notes |
+|---|---|---|
+| Valheim plugin | .NET SDK 8 or newer | compiles against your own Valheim install, found in any Steam library |
+| Minecraft mod | JDK 25 (`winget install EclipseAdoptium.Temurin.25.JDK`) | Gradle downloads itself |
+| Compositor | MSVC: Visual Studio / Build Tools with C++, or `python tools\get_msvc.py` (portable, no admin) | rarely changes |
 
 The real-game test scripts (`host\v040_test.ps1`, `host\v090_test.ps1`, ...) drive both games through plugin test hooks; see
 [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#testing).

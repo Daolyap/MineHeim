@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Building from a clone just works:** `Install-MineHeim.ps1` builds whatever is not built yet before installing; `-Build` rebuilds,
+  `-Only Valheim|Compositor|Minecraft` limits it to the parts you name. `tools\build.ps1` finds the .NET SDK, a JDK 25, MSVC and
+  your Valheim install (any Steam library) itself, and names the install command for anything missing. A plain `dotnet build`
+  now finds Valheim through Steam's registry entry and fails with one clear message instead of 195 errors.
+
 ## 0.9.0 (release candidate) — MineHeim
 
 The first public build, under its new name.

@@ -6,9 +6,11 @@
                                                 it carries its DLLs as a zip appended to the exe)
     third_party\shaders\*                       ReShade.fxh, ReShadeUI.fxh, DisplayDepth.fx, DisplayDepth_L10N.fxh
                                                 (crosire/reshade-shaders, pinned to the commit we tested)
+  With -Headers also (only needed to build the add-on):
+    third_party\reshade\*.hpp                   ReShade's add-on API headers (crosire/reshade, tag v6.8.0)
   Every file is checked against the SHA-256 of the copy that was tested. No Python needed.
-  (Building the add-on also needs ReShade's API headers: python compositor\fetch_deps.py.)
 #>
+param([switch]$Headers)
 $ErrorActionPreference = 'Stop'
 $root = Join-Path (Split-Path $PSScriptRoot -Parent) 'third_party'
 $ua = @{ 'User-Agent' = 'mineheim-fetch/0.1' }
@@ -67,3 +69,26 @@ foreach ($f in $shaders.Keys) {
     Assert-Hash $dst $shaders[$f]
 }
 Write-Host "ReShade 6.8.0 runtime and shaders ready in $root (hashes checked)"
+
+if ($Headers) {
+    $api = [ordered]@{
+        'reshade.hpp'              = 'CF3CD150920EA310B4B1E2E4F11AB8D7221A9FC18755F4891A026563311B524C'
+        'reshade_api.hpp'          = '8D83EC8A620C48DA7A20D975BD27B3345B24D3F0D5B78AE4C4FE633D61B804EB'
+        'reshade_api_device.hpp'   = 'A716C44B6FBB064DBBB0826687728F21AA71ED45E13564E4DC1CDF36DA5BDFA0'
+        'reshade_api_format.hpp'   = '68CAA17FEF712043E810AB88770C15AF009AA3C7693E5C115DDC324F2D0809A7'
+        'reshade_api_pipeline.hpp' = '5BDA8E07260C2C60F0FD18A78B11782AED8F69E5D24B5757874614CAAFDF416F'
+        'reshade_api_resource.hpp' = '32CDAFE6D783813F3AC72AD43E426638D8D0FEF56BCB558FAD218A14CFB75EE3'
+        'reshade_events.hpp'       = '2717F56E2BD89AF6D708C9C316353D6581C5A41D4526629FADBA51D13BE57A89'
+        'reshade_overlay.hpp'      = 'ED914B12FBC41ED038287B0163C0BC934772AFCFF2C22392044C6008ADC5AE79'
+    }
+    $inc = Join-Path $root 'reshade'
+    New-Item -ItemType Directory -Force $inc | Out-Null
+    foreach ($f in $api.Keys) {
+        $dst = Join-Path $inc $f
+        if (-not (Test-Path $dst) -or (Get-FileHash $dst).Hash -ne $api[$f]) {
+            Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/crosire/reshade/v6.8.0/include/$f" -OutFile $dst -Headers $ua
+        }
+        Assert-Hash $dst $api[$f]
+    }
+    Write-Host "ReShade 6.8.0 add-on API headers ready in $inc (hashes checked)"
+}
