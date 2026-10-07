@@ -1,0 +1,48 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+repositories {
+	mavenCentral()
+}
+
+loom {
+	splitEnvironmentSourceSets()
+	mods {
+		"mineheim" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+	runs {
+		// dev client: a fixed window size so the camera/projection maths is easy to check.
+		// -PrunWidth/-PrunHeight override it (the dev laptop has an integrated GPU: default 960x540).
+		client {
+			programArgs "--width", (findProperty("runWidth") ?: "960"), "--height", (findProperty("runHeight") ?: "540")
+			// a void world needs little heap; -PrunXmx raises it (the dev laptop shares 8 GB with Valheim)
+			vmArgs "--enable-native-access=ALL-UNNAMED", "-Xmx${findProperty('runXmx') ?: '1G'}", "-XX:+UseSerialGC"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// WebSocket server the Valheim plugin connects to (127.0.0.1 only)
+	implementation "org.java-websocket:Java-WebSocket:1.6.0"
+	include "org.java-websocket:Java-WebSocket:1.6.0"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") { expand "version": version }
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

@@ -1,0 +1,59 @@
+# build output
+build/
+out/
+bin/
+obj/
+.gradle/
+run/
+*.class
+*.jar
+!mc/gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Java / crash dumps
+hs_err_*.log
+replay_*.log
+*.hprof
+
+# local-only: decompiles, game files, extracted assets, third-party SDKs and downloaded runtimes.
+# NEVER commit any Minecraft or Valheim file, decompiled source or extracted asset.
+decomp/
+third_party/
+refs/
+
+# python
+__pycache__/
+*.pyc
+
+# evidence: keep small text logs and screenshots, not recordings or raw frame dumps
+artifacts/**/*.mp4
+artifacts/**/*.mkv
+artifacts/**/*.raw
+artifacts/**/*.bin
+
+# python venv
+.venv/
+
+# raw showcase takes (large); the edited clip artifacts/<date>/showcase.mp4 is also local only (mp4 is ignored above)
+artifacts/takes/
+
+# release packages (tools/make_release.ps1)
+dist/
+
+# local only: the development journal, test evidence and the toolkit field-note draft (not part of the public repo)
+MODLOG.md
+artifacts/
+knowledge/
+
+
+# test oracles' screenshots and logs
+test-output/
+
+
+# rendered video kit (large; rebuild with python video/build.py)
+video/out/
+

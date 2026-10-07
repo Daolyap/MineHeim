@@ -1,0 +1,7 @@
+{
+	"required": true,
+	"package": "dev.daolyap.mineheim.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": ["AbstractClientPlayerMixin", "CameraMixin", "ClientLevelMixin", "EntityPickMixin", "LivingEntityMixin", "FogRendererMixin", "GameRendererMixin", "GlCommandEncoderMixin", "KeyMappingAccessor", "LocalPlayerMixin", "MouseHandlerMixin", "ToastManagerMixin"],
+	"injectors": { "defaultRequire": 1 }
+}

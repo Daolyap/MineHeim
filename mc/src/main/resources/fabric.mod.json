@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "mineheim",
+	"version": "${version}",
+	"name": "MineHeim",
+	"description": "Real Minecraft inside Valheim: runs alongside Valheim, follows its camera, stands on its terrain and buildings, fights its creatures, trades items with it, and hands its picture back to be composited into Valheim's frame.",
+	"authors": [
+		"Daolyap",
+		"Claude Code (AI-built, under the author's direction)"
+	],
+	"contact": {
+		"homepage": "https://github.com/Daolyap/MineHeim",
+		"sources": "https://github.com/Daolyap/MineHeim",
+		"issues": "https://github.com/Daolyap/MineHeim/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/mineheim/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.daolyap.mineheim.MineHeim"
+		],
+		"client": [
+			"dev.daolyap.mineheim.client.MineHeimClient"
+		]
+	},
+	"mixins": [
+		"mineheim.mixins.json",
+		{
+			"config": "mineheim.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
