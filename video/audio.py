@@ -292,7 +292,9 @@ def mix_track(seconds: float, energy, cues: list[tuple[float, str, float]], spee
             continue
         x = to_stereo(x[: n - s] * gain)
         out[s:s + len(x)] += x
-    # soft limiter
+    # loudness: the whole track to about -16 dBFS RMS (YouTube plays around -14 LUFS), then a soft limiter for the peaks
+    rms = float(np.sqrt(np.mean(out ** 2))) or 1e-6
+    out *= 10 ** (-16 / 20) / rms
     return np.tanh(out * 1.1) * 0.89
 
 
