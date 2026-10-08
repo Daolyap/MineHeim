@@ -55,6 +55,9 @@ uniform float BloomThreshold < ui_type = "drag"; ui_min = 0.0; ui_max = 1.0; ui_
 // (x, y: fraction of the screen height; z: roll, radians), and the nether portal's warp (0..1) while passing through.
 uniform float3 Shake = float3(0.0, 0.0, 0.0);
 uniform float PortalWarp = 0.0;
+// the host's world around the camera: x = Nether heat (0..1, the air shimmers), y = the End (0..1, a cold violet dusk)
+uniform float2 Infection = float2(0.0, 0.0);
+uniform float HeatHaze < ui_type = "drag"; ui_min = 0.0; ui_max = 2.0; ui_step = 0.05; ui_label = "Nether heat haze"; > = 1.0;
 // Debug: stamp which frames this picture was composited from into the top-left corner, as two rows of 24 bits (4 px each):
 // row 1 = Valheim's pose frame, row 2 = Minecraft's frame. Set by the add-on; host/composite_oracle.py reads it back, so a
 // screenshot always says exactly which poses it used (ReShade saves screenshots asynchronously: no side channel is safe).
@@ -283,6 +286,14 @@ float3 PS_Final(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 		d = float2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
 		d += PortalWarp * 0.014 * float2(sin(d.y * 38.0 + t * 7.0), cos(d.x * 31.0 + t * 6.0));
 	}
+	// Nether heat: the air shimmers, rising, strongest low in the picture (over the ground) and far away
+	if (Infection.x > 0.0 && HeatHaze > 0.0)
+	{
+		const float low = saturate(uv.y * 1.4 - 0.25);
+		const float far = saturate(tex2Dlod(sMcInfo, float4(uv, 0, 0)).z / 30.0);
+		const float a = Infection.x * HeatHaze * (0.0012 + 0.0032 * low) * (0.5 + 0.5 * far);
+		d += a * float2(sin(d.y * 95.0 - t * 6.3 + sin(d.x * 17.0 + t)), cos(d.x * 71.0 + d.y * 40.0 - t * 4.7));
+	}
 	const float cr = cos(Shake.z), sr = sin(Shake.z);
 	d = float2(d.x * cr - d.y * sr, d.x * sr + d.y * cr) + Shake.xy;
 	const float2 wuv = d / float2(aspect, 1.0) + 0.5;
@@ -327,7 +338,7 @@ float3 PS_Final(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 	{
 		const float3 b = tex2Dlod(sMcBright, float4(wuv, 0, 1.0)).rgb * 0.5 + tex2Dlod(sMcBright, float4(wuv, 0, 2.5)).rgb * 0.8
 			+ tex2Dlod(sMcBright, float4(wuv, 0, 4.0)).rgb;
-		color += b * BloomStrength;
+		color += b * BloomStrength * (1.0 - 0.85 * Infection.y); // the End's pale stone would bloom white
 	}
 	// the portal's purple
 	if (PortalWarp > 0.0)
@@ -335,6 +346,16 @@ float3 PS_Final(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 		const float r = length((uv - 0.5) * float2(aspect, 1.0));
 		const float3 purple = color * float3(0.72, 0.38, 1.25) + float3(0.12, 0.0, 0.22) * (0.6 + 0.4 * sin(t * 3.0 + r * 9.0));
 		color = lerp(color, purple, saturate(PortalWarp * (0.55 + r * 0.6)));
+	}
+	// the Nether's heat warms the light; the End drains it to a cold violet, darkest at the edges
+	if (Infection.x > 0.0)
+		color = lerp(color, color * float3(1.10, 0.93, 0.80) + float3(0.025, 0.006, 0.0), Infection.x * 0.6);
+	if (Infection.y > 0.0)
+	{
+		const float r = length((uv - 0.5) * float2(aspect, 1.0));
+		const float luma = dot(color, float3(0.299, 0.587, 0.114));
+		const float3 cold = lerp(float3(luma, luma, luma), color, 0.55) * float3(0.92, 0.86, 1.10) + float3(0.02, 0.0, 0.04);
+		color = lerp(color, cold * (0.82 - 0.35 * saturate(r - 0.35)), Infection.y * 0.75);
 	}
 	const float4 overlay = tex2D(sOverlay, float2(uv.x, 1.0 - uv.y)); // hand and HUD are screen-space: never shaken
 	return overlay.rgb + saturate(color) * (1.0 - overlay.a);

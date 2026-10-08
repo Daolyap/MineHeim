@@ -343,7 +343,8 @@ namespace MineHeim
             // cover it), 8 Minecraft is attached
             bool valheimUi = Cursor.lockState != CursorLockMode.Locked && !ScreenBridge.Open;
             HostPoseShm.Write(_frame, mx, my, mz, (float)yaw, (float)pitch, (float)roll, cam.fieldOfView, cam.nearClipPlane, cam.farClipPlane,
-                1 | (firstPerson ? 2 : 0) | (valheimUi ? 4 : 0) | (Link.Connected ? 8 : 0), System.Diagnostics.Stopwatch.GetTimestamp());
+                1 | (firstPerson ? 2 : 0) | (valheimUi ? 4 : 0) | (Link.Connected ? 8 : 0), System.Diagnostics.Stopwatch.GetTimestamp(),
+                NetherBridge.Heat, NetherBridge.EndHere);
             UpdateMarker(cam, _frame);
             if (Link.Connected)
             {

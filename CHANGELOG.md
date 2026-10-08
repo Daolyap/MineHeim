@@ -12,7 +12,18 @@
 - **Fire, lava and magma blocks burn the Viking** in Survival (Valheim fire damage: he catches fire, fire resistance helps).
 - **Break the portal and the land heals**, outside in, until it is as it was. A **ward** keeps an infection out of its area, and placing
   one on infected land cleans it. The portal gets a map pin. Infections are saved with the Minecraft world.
-- Nothing is saved into the Valheim world: the Ashlands look is drawn, not painted into the terrain. Settings: `Nether.*`.
+- **You hear it and feel the heat.** Minecraft plays the Nether wastes' drone over infected land, with its moans and the crimson
+  forest's and soul sand valley's sounds now and then. The air shimmers with heat, most of all low over the ground and far off, and the
+  light turns warm (the compositor; `HeatHaze` in ReShade's settings scales it).
+- **Valheim's creatures react.** Animals (deer, boars, necks...) run from a lit portal's land; creatures standing on Nether ground burn,
+  unless they are fireproof, tamed or a boss (`Nether.CreaturesBurn`, `BurnDamage`, `AnimalsFlee`).
+- **The End comes too.** Fill an End portal's twelve frames with eyes (Creative: End portal frames can't be had in Survival) and the
+  land fades into the End: end stone, purpur ruins and end rods, chorus flowers, obsidian spikes crowned with end crystals (hit one
+  and it blows up). In Valheim it becomes the Mistlands: its dark ground and clutter, and its mist and sky deep inside; the light
+  turns cold and violet. Endermen, endermites and shulkers walk it, portal motes drift up, and the End now and then warps a Valheim
+  creature a few metres. Once it has spread to three quarters of its reach the **Ender Dragon** comes and circles the portal.
+  Kill the dragon, or break one of the frames, and the portal goes out and the land heals. Settings: `End.*`.
+- Nothing is saved into the Valheim world: the Ashlands and Mistlands looks are drawn, not painted into the terrain. Settings: `Nether.*`, `End.*`.
 
 ## 0.9.1 — fixes from the first real play test
 

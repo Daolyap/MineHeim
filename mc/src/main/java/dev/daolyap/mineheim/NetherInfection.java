@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,10 +30,13 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
@@ -50,6 +55,10 @@ import net.minecraft.world.phys.AABB;
  * reported to the host as collision (it would turn the host's ground into steps); decorations are (they're not solid,
  * but fire is a light: the host lights its world with it).
  *
+ * <p>The End comes the same way: an End portal (its twelve frames filled with eyes) infects the land with end stone,
+ * chorus, end rods and obsidian spikes crowned with end crystals; endermen, endermites and shulkers walk it, and once
+ * it has spread far the Ender Dragon comes and circles its portal. Break a frame, or kill the dragon, and it heals.
+ *
  * <p>Inside the host's wards (the host sends them: {"t":"wards"}) nothing grows, and a ward placed on infected land
  * cleans its area. The infections live in the world folder (mineheim/infections.json), so they outlast a restart.
  * Server thread only, except where noted.
@@ -58,6 +67,11 @@ public final class NetherInfection {
 	/** One infection: a portal and the land it has turned. */
 	static final class Infection {
 		int id;
+		/** NETHER or END. */
+		int kind;
+		/** The End's dragon: spawned once, and its entity while it lives. */
+		boolean dragonSpawned;
+		UUID dragon;
 		/** Portal blocks that belong to it (the frame's inside); empty = the portal is gone and the land heals. */
 		final Set<Long> portal = new HashSet<>();
 		double cx, cz;
@@ -66,6 +80,8 @@ public final class NetherInfection {
 		double radius;
 		/** Cells this infection placed: cell -> the block state id it placed there (crust and decorations). */
 		final Map<Long, Integer> placed = new HashMap<>();
+		/** Of those, the cells the host was told about (decorations, spikes): their removal is news to it too (a fire's light goes). */
+		final Set<Long> reported = new HashSet<>();
 		/** Columns that got their crust (cell of the crust block) and columns still waiting for the host's ground. */
 		final Map<Long, Long> crusted = new HashMap<>();
 		final Set<Long> pending = new HashSet<>();
@@ -79,6 +95,8 @@ public final class NetherInfection {
 		}
 	}
 
+	static final int NETHER = 0, END = 1;
+	private static final String[] KIND_NAMES = {"nether", "end"};
 	private static final List<Infection> infections = new ArrayList<>();
 	private static final String MOB_TAG = "mineheim_nether";
 
@@ -86,12 +104,13 @@ public final class NetherInfection {
 	static volatile boolean enabled = true;
 	static volatile double maxRadius = 48, growPerMinute = 8, healPerMinute = 16;
 	static volatile int mobCap = 10, spawnSeconds = 8;
+	static volatile boolean endEnabled = true, dragonEnabled = true;
 
 	/** The host's wards, Minecraft x, z, radius per ward (link thread writes, server thread reads). */
 	private static volatile float[] wards = new float[0];
 	private static volatile boolean wardsChanged;
 
-	/** For the client's ash and spores: x, y, z, radius per infection that is lit or still healing (any thread reads). */
+	/** For the client's air and sounds: x, y, z, radius, kind per infection, lit or still healing (any thread reads). */
 	public static volatile float[] zones = new float[0];
 
 	private static final int MAX_RADIUS_LIMIT = 96;
@@ -133,7 +152,7 @@ public final class NetherInfection {
 
 	// ------------------------------------------------------------------ settings and wards from the host (link thread)
 
-	/** {"t":"nethercfg","on":bool,"max":blocks,"grow":blocks a minute,"heal":blocks a minute,"mobs":cap,"every":seconds}. */
+	/** {"t":"nethercfg","on":bool,"end":bool,"dragon":bool,"max":blocks,"grow":blocks a minute,"heal":blocks a minute,"mobs":cap,"every":seconds}. */
 	public static void configure(final JsonObject m) {
 		enabled = !m.has("on") || m.get("on").getAsBoolean();
 		maxRadius = Math.max(4, Math.min(MAX_RADIUS_LIMIT, m.has("max") ? m.get("max").getAsDouble() : maxRadius));
@@ -141,7 +160,10 @@ public final class NetherInfection {
 		healPerMinute = Math.max(0.5, m.has("heal") ? m.get("heal").getAsDouble() : healPerMinute);
 		mobCap = Math.max(0, m.has("mobs") ? m.get("mobs").getAsInt() : mobCap);
 		spawnSeconds = Math.max(1, m.has("every") ? m.get("every").getAsInt() : spawnSeconds);
-		MineHeim.LOG.info("nether infection: on={} max={} grow={}/min heal={}/min mobs={} every {} s", enabled, maxRadius, growPerMinute, healPerMinute, mobCap, spawnSeconds);
+		endEnabled = !m.has("end") || m.get("end").getAsBoolean();
+		dragonEnabled = !m.has("dragon") || m.get("dragon").getAsBoolean();
+		MineHeim.LOG.info("nether infection: on={} end={} dragon={} max={} grow={}/min heal={}/min mobs={} every {} s", enabled, endEnabled, dragonEnabled, maxRadius, growPerMinute,
+			healPerMinute, mobCap, spawnSeconds);
 	}
 
 	/** {"t":"wards","w":[x,z,radius,...]} in Minecraft coordinates: the host's active wards near its player. */
@@ -201,14 +223,16 @@ public final class NetherInfection {
 	/** Server thread, from Level.setBlock (every change, whoever made it): portals lit and broken. */
 	static void onBlockChanged(final ServerLevel level, final BlockPos pos, final BlockState state) {
 		long key = pos.asLong();
-		if (state.is(Blocks.NETHER_PORTAL)) {
-			if (!enabled) {
+		boolean nether = state.is(Blocks.NETHER_PORTAL), end = state.is(Blocks.END_PORTAL);
+		if (nether || end) {
+			if (nether ? !enabled : !endEnabled) {
 				return;
 			}
 
+			int kind = nether ? NETHER : END;
 			Infection in = null;
 			for (Infection i : infections) {
-				if (i.portal.contains(key) || (Math.abs(pos.getX() - i.cx) < 12 && Math.abs(pos.getZ() - i.cz) < 12 && Math.abs(pos.getY() - i.cy) < 24)) {
+				if (i.kind == kind && i.portal.contains(key) || i.kind == kind && (Math.abs(pos.getX() - i.cx) < 12 && Math.abs(pos.getZ() - i.cz) < 12 && Math.abs(pos.getY() - i.cy) < 24)) {
 					in = i;
 					break;
 				}
@@ -218,6 +242,7 @@ public final class NetherInfection {
 			if (fresh) {
 				in = new Infection();
 				in.id = nextId++;
+				in.kind = kind;
 				in.radius = 2;
 				infections.add(in);
 			}
@@ -227,18 +252,61 @@ public final class NetherInfection {
 			centre(in);
 			dirty = true;
 			if (fresh || relit) {
-				MineHeim.LOG.info("nether infection {} {} at {} {} {}", in.id, fresh ? "started" : "lit again", (int) in.cx, in.cy, (int) in.cz);
+				MineHeim.LOG.info("nether infection {} ({}) {} at {} {} {}", in.id, KIND_NAMES[in.kind], fresh ? "started" : "lit again", (int) in.cx, in.cy, (int) in.cz);
 			}
 		} else {
+			Infection framed = null;
 			for (Infection i : infections) {
 				if (i.portal.remove(key)) {
 					dirty = true;
 					if (!i.lit()) {
 						MineHeim.LOG.info("nether infection {}: portal broken, healing from radius {}", i.id, String.format(Locale.ROOT, "%.1f", i.radius));
 					}
+				} else if (i.kind == END && i.lit() && !state.is(Blocks.END_PORTAL_FRAME) && onFrame(i, pos)) {
+					framed = i;
 				}
 			}
+
+			// an End portal's blocks can't be broken: taking away one of its frames puts the portal out
+			if (framed != null) {
+				MineHeim.LOG.info("nether infection {}: an End portal frame was broken", framed.id);
+				closePortal(level, framed);
+			}
 		}
+	}
+
+	/** Is this one of the twelve frame cells around an End infection's portal (the ring one block out, at the portal's height)? */
+	private static boolean onFrame(final Infection i, final BlockPos pos) {
+		int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE, y = 0;
+		for (long k : i.portal) {
+			BlockPos p = BlockPos.of(k);
+			minX = Math.min(minX, p.getX());
+			maxX = Math.max(maxX, p.getX());
+			minZ = Math.min(minZ, p.getZ());
+			maxZ = Math.max(maxZ, p.getZ());
+			y = p.getY();
+		}
+
+		if (pos.getY() != y) {
+			return false;
+		}
+
+		boolean alongX = pos.getX() >= minX && pos.getX() <= maxX && (pos.getZ() == minZ - 1 || pos.getZ() == maxZ + 1);
+		boolean alongZ = pos.getZ() >= minZ && pos.getZ() <= maxZ && (pos.getX() == minX - 1 || pos.getX() == maxX + 1);
+		return alongX || alongZ;
+	}
+
+	/** Take an infection's portal blocks away (it then heals). */
+	private static void closePortal(final ServerLevel level, final Infection i) {
+		for (long k : new ArrayList<>(i.portal)) {
+			BlockPos p = BlockPos.of(k);
+			if (level.getBlockState(p).is(Blocks.END_PORTAL) || level.getBlockState(p).is(Blocks.NETHER_PORTAL)) {
+				level.setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+			}
+		}
+
+		i.portal.clear();
+		dirty = true;
 	}
 
 	private static void centre(final Infection in) {
@@ -287,9 +355,7 @@ public final class NetherInfection {
 		for (Infection i : infections) {
 			Long crust = i.crusted.get(col);
 			if (crust != null && i.placed.containsKey(crust) && BlockPos.of(crust).getY() != cell) {
-				BlockPos at = BlockPos.of(crust);
-				unplace(level, i, at.above());
-				unplace(level, i, at);
+				unplaceColumn(level, i, BlockPos.of(crust));
 				i.crusted.remove(col);
 				i.pending.add(col);
 				dirty = true;
@@ -325,7 +391,11 @@ public final class NetherInfection {
 
 		for (Iterator<Infection> it = infections.iterator(); it.hasNext();) {
 			Infection i = it.next();
-			if (i.lit() && enabled) {
+			if (ticks % 20 == 7) {
+				dragon(level, i);
+			}
+
+			if (i.lit() && (i.kind == END ? endEnabled : enabled)) {
 				i.radius = Math.min(maxRadius, i.radius + growPerMinute / 1200.0);
 				budget -= grow(level, i, budget);
 				spawnMobs(level, i);
@@ -426,11 +496,15 @@ public final class NetherInfection {
 
 		long h = hash(x, z, 1);
 		double near = d < 3.0 ? 0.0 : 1.0; // the ground at the portal stays plain netherrack
-		BlockState crustState = crust(x, z, h, near);
+		BlockState crustState = i.kind == END ? endCrust(x, z, h, near) : crust(x, z, h, near);
 		place(level, i, crust, crustState, true);
-		BlockState deco = near > 0 ? decoration(crustState, h) : null;
-		if (deco != null && level.getBlockState(crust.above()).isAir()) {
-			place(level, i, crust.above(), deco, false);
+		if (i.kind == END && near > 0 && d > 7 && h % 260 == 0) {
+			spike(level, i, crust, h);
+		} else {
+			BlockState deco = near > 0 ? (i.kind == END ? endDecoration(crustState, h) : decoration(crustState, h)) : null;
+			if (deco != null && level.getBlockState(crust.above()).isAir()) {
+				place(level, i, crust.above(), deco, false);
+			}
 		}
 
 		i.crusted.put(column(x, z), crust.asLong());
@@ -444,20 +518,36 @@ public final class NetherInfection {
 		level.setBlock(pos, state, Block.UPDATE_ALL);
 		WorldBridge.placingGround = false;
 		i.placed.put(pos.asLong(), Block.getId(state));
+		if (!crust) {
+			i.reported.add(pos.asLong());
+		}
 	}
 
 	/** Take one placed cell away again, if it is still exactly what was placed (the player may have mined or built there). */
 	private static void unplace(final ServerLevel level, final Infection i, final BlockPos pos) {
 		Integer id = i.placed.remove(pos.asLong());
+		boolean reported = i.reported.remove(pos.asLong());
 		if (id == null) {
 			return;
 		}
 
 		BlockState now = level.getBlockState(pos);
 		if (Block.getId(now) == id || now.is(Blocks.FIRE) || now.is(Blocks.SOUL_FIRE)) {
-			WorldBridge.placingGround = true;
+			WorldBridge.placingGround = !reported;
 			level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			WorldBridge.placingGround = false;
+		}
+	}
+
+	/** A column's crust and everything placed on it (a decoration, an End spike), top down. */
+	private static void unplaceColumn(final ServerLevel level, final Infection i, final BlockPos crust) {
+		int top = 0;
+		while (top < 24 && i.placed.containsKey(crust.above(top + 1).asLong())) {
+			top++;
+		}
+
+		for (int k = top; k >= 0; k--) {
+			unplace(level, i, crust.above(k));
 		}
 	}
 
@@ -473,11 +563,20 @@ public final class NetherInfection {
 					continue; // healed when the player is back near it
 				}
 
-				unplace(level, i, crust.above());
-				unplace(level, i, crust);
+				unplaceColumn(level, i, crust);
 				it.remove();
 				done++;
 				dirty = true;
+			}
+		}
+
+		if (i.kind == END) {
+			AABB area = new AABB(i.cx - 100, i.cy - 48, i.cz - 100, i.cx + 100, i.cy + 64, i.cz + 100);
+			for (EndCrystal c : level.getEntitiesOfClass(EndCrystal.class, area, c -> c.entityTags().contains(MOB_TAG))) {
+				double dx = c.getX() - i.cx, dz = c.getZ() - i.cz;
+				if (Math.sqrt(dx * dx + dz * dz) > Math.max(0, i.radius)) {
+					c.discard();
+				}
 			}
 		}
 
@@ -504,9 +603,7 @@ public final class NetherInfection {
 			Map.Entry<Long, Long> e = it.next();
 			int x = (int) (e.getKey() >> 32), z = (int) (long) e.getKey();
 			if (inWard(x, z)) {
-				BlockPos crust = BlockPos.of(e.getValue());
-				unplace(level, i, crust.above());
-				unplace(level, i, crust);
+				unplaceColumn(level, i, BlockPos.of(e.getValue()));
 				it.remove();
 				i.pending.add(e.getKey());
 				dirty = true;
@@ -604,6 +701,55 @@ public final class NetherInfection {
 		return null;
 	}
 
+	/** The End's floor: end stone, a few bricks and purpur ruins, a little obsidian. */
+	private static BlockState endCrust(final int x, final int z, final long h, final double near) {
+		if (near == 0.0) {
+			return Blocks.END_STONE.defaultBlockState();
+		}
+
+		int roll = (int) (h % 100);
+		if (noise(x, z, 6.0, 11) > 0.82) {
+			return roll < 70 ? Blocks.PURPUR_BLOCK.defaultBlockState() : Blocks.END_STONE_BRICKS.defaultBlockState();
+		}
+
+		return roll < 4 ? Blocks.OBSIDIAN.defaultBlockState() : roll < 9 ? Blocks.END_STONE_BRICKS.defaultBlockState() : Blocks.END_STONE.defaultBlockState();
+	}
+
+	/** Chorus and the odd end rod (a light for the host too). */
+	private static BlockState endDecoration(final BlockState crust, final long h) {
+		int roll = (int) ((h >> 8) % 100);
+		if (crust.is(Blocks.END_STONE)) {
+			return roll < 3 ? Blocks.CHORUS_FLOWER.defaultBlockState() : roll < 4 ? Blocks.END_ROD.defaultBlockState() : null;
+		}
+
+		return crust.is(Blocks.PURPUR_BLOCK) && roll < 6 ? Blocks.END_ROD.defaultBlockState() : null;
+	}
+
+	/** An obsidian spike (collision for the host too), now and then crowned with an end crystal: hit it and it blows up. */
+	private static void spike(final ServerLevel level, final Infection i, final BlockPos crust, final long h) {
+		int height = 4 + (int) ((h >> 12) % 7);
+		BlockPos top = crust;
+		for (int k = 1; k <= height; k++) {
+			BlockPos p = crust.above(k);
+			if (!level.getBlockState(p).isAir()) {
+				break;
+			}
+
+			place(level, i, p, Blocks.OBSIDIAN.defaultBlockState(), false);
+			top = p;
+		}
+
+		if (top != crust && (h >> 20) % 2 == 0) {
+			EndCrystal crystal = EntityTypes.END_CRYSTAL.create(level, EntitySpawnReason.EVENT);
+			if (crystal != null) {
+				crystal.setPos(top.getX() + 0.5, top.getY() + 1, top.getZ() + 0.5);
+				crystal.setShowBottom(true);
+				crystal.addTag(MOB_TAG);
+				level.addFreshEntity(crystal);
+			}
+		}
+	}
+
 	/** 0..1, how ragged the edge is at this column (so the infection's edge isn't a perfect circle). */
 	private static double edge(final int x, final int z) {
 		return noise(x, z, 5.0, 3);
@@ -648,6 +794,12 @@ public final class NetherInfection {
 	private record Spawn(EntityType<? extends Mob> type, int weight, int lift, double minRadius) {
 	}
 
+	private static final Spawn[] END_SPAWNS = {
+		new Spawn(EntityTypes.ENDERMAN, 60, 0, 0),
+		new Spawn(EntityTypes.ENDERMITE, 20, 0, 0),
+		new Spawn(EntityTypes.SHULKER, 10, 0, 12),
+	};
+
 	private static final Spawn[] SPAWNS = {
 		new Spawn(EntityTypes.ZOMBIFIED_PIGLIN, 30, 0, 0),
 		new Spawn(EntityTypes.PIGLIN, 16, 0, 0),
@@ -671,7 +823,7 @@ public final class NetherInfection {
 		}
 
 		AABB area = new AABB(i.cx - i.radius - 24, i.cy - 48, i.cz - i.radius - 24, i.cx + i.radius + 24, i.cy + 64, i.cz + i.radius + 24);
-		int count = level.getEntitiesOfClass(Mob.class, area, m -> m.entityTags().contains(MOB_TAG)).size();
+		int count = level.getEntitiesOfClass(Mob.class, area, m -> m.entityTags().contains(MOB_TAG) && !(m instanceof EnderDragon)).size();
 		int cap = Math.min(mobCap, 2 + (int) (i.radius / 6));
 		if (count >= cap) {
 			return;
@@ -686,7 +838,7 @@ public final class NetherInfection {
 				continue;
 			}
 
-			Spawn pick = pick(random, i.radius);
+			Spawn pick = pick(random, i.radius, i.kind == END ? END_SPAWNS : SPAWNS);
 			BlockPos at = crust.above(1 + pick.lift());
 			if (!level.getBlockState(at).isAir() && !level.getBlockState(at).canBeReplaced()) {
 				continue;
@@ -710,14 +862,14 @@ public final class NetherInfection {
 		}
 	}
 
-	private static Spawn pick(final RandomSource random, final double radius) {
+	private static Spawn pick(final RandomSource random, final double radius, final Spawn[] table) {
 		int total = 0;
-		for (Spawn s : SPAWNS) {
+		for (Spawn s : table) {
 			total += radius >= s.minRadius() ? s.weight() : 0;
 		}
 
 		int r = random.nextInt(Math.max(1, total));
-		for (Spawn s : SPAWNS) {
+		for (Spawn s : table) {
 			if (radius >= s.minRadius()) {
 				r -= s.weight();
 				if (r < 0) {
@@ -726,14 +878,58 @@ public final class NetherInfection {
 			}
 		}
 
-		return SPAWNS[0];
+		return table[0];
+	}
+
+	/**
+	 * The End's dragon: once an End infection has spread to three quarters of its reach, the Ender Dragon comes and
+	 * circles its portal (its fight's origin). Killing it puts the portal out. Server thread, once a second.
+	 */
+	private static void dragon(final ServerLevel level, final Infection i) {
+		if (i.kind != END) {
+			return;
+		}
+
+		if (i.dragon != null) {
+			Entity e = level.getEntity(i.dragon);
+			if (e == null && !level.isLoaded(BlockPos.containing(i.cx, i.cy, i.cz))) {
+				return; // far away: not loaded, not dead
+			}
+
+			if (e == null || !e.isAlive()) {
+				MineHeim.LOG.info("nether infection {}: the Ender Dragon is dead, the End portal goes out", i.id);
+				i.dragon = null;
+				closePortal(level, i);
+			}
+
+			return;
+		}
+
+		if (i.dragonSpawned || !dragonEnabled || !i.lit() || i.radius < maxRadius * 0.75) {
+			return;
+		}
+
+		EnderDragon dragon = EntityTypes.ENDER_DRAGON.create(level, EntitySpawnReason.EVENT);
+		if (dragon == null) {
+			return;
+		}
+
+		BlockPos origin = BlockPos.containing(i.cx, i.cy + 1, i.cz);
+		dragon.setFightOrigin(origin);
+		dragon.setPos(i.cx, i.cy + 40, i.cz);
+		dragon.addTag(MOB_TAG);
+		level.addFreshEntity(dragon);
+		i.dragonSpawned = true;
+		i.dragon = dragon.getUUID();
+		dirty = true;
+		MineHeim.LOG.info("nether infection {}: the Ender Dragon has come", i.id);
 	}
 
 	/** Every mob the infections spawned (test hook and "nether clear"). */
 	static int countMobs(final ServerLevel level) {
 		int n = 0;
 		for (Entity e : level.getAllEntities()) {
-			n += e.entityTags().contains(MOB_TAG) ? 1 : 0;
+			n += e instanceof Mob && e.entityTags().contains(MOB_TAG) ? 1 : 0;
 		}
 
 		return n;
@@ -741,7 +937,7 @@ public final class NetherInfection {
 
 	// ------------------------------------------------------------------ host side: reports, commands, the file
 
-	/** {"t":"infect","l":[[id,x,y,z,radius,lit,crusted columns,placed cells,waiting columns],...],"mobs":n}, once a second when it changed. */
+	/** {"t":"infect","l":[[id,x,y,z,radius,lit,crusted columns,placed cells,waiting columns,kind (0 Nether, 1 End),dragon alive],...],"mobs":n}, once a second when it changed. */
 	private static void report() {
 		if (!MineHeim.active) {
 			return;
@@ -750,8 +946,8 @@ public final class NetherInfection {
 		StringBuilder b = new StringBuilder("{\"t\":\"infect\",\"l\":[");
 		for (int k = 0; k < infections.size(); k++) {
 			Infection i = infections.get(k);
-			b.append(k == 0 ? "" : ",").append(String.format(Locale.ROOT, "[%d,%.2f,%d,%.2f,%.2f,%d,%d,%d,%d]", i.id, i.cx, i.cy, i.cz, Math.max(0, i.radius),
-				i.lit() ? 1 : 0, i.crusted.size(), i.placed.size(), i.pending.size()));
+			b.append(k == 0 ? "" : ",").append(String.format(Locale.ROOT, "[%d,%.2f,%d,%.2f,%.2f,%d,%d,%d,%d,%d,%d]", i.id, i.cx, i.cy, i.cz, Math.max(0, i.radius),
+				i.lit() ? 1 : 0, i.crusted.size(), i.placed.size(), i.pending.size(), i.kind, i.dragon != null ? 1 : 0));
 		}
 
 		MinecraftServer s = WorldBridge.server();
@@ -763,19 +959,20 @@ public final class NetherInfection {
 	}
 
 	private static void publishZones() {
-		float[] z = new float[infections.size() * 4];
+		float[] z = new float[infections.size() * 5];
 		for (int k = 0; k < infections.size(); k++) {
 			Infection i = infections.get(k);
-			z[k * 4] = (float) i.cx;
-			z[k * 4 + 1] = i.cy;
-			z[k * 4 + 2] = (float) i.cz;
-			z[k * 4 + 3] = (float) Math.max(0, i.radius);
+			z[k * 5] = (float) i.cx;
+			z[k * 5 + 1] = i.cy;
+			z[k * 5 + 2] = (float) i.cz;
+			z[k * 5 + 3] = (float) Math.max(0, i.radius);
+			z[k * 5 + 4] = i.kind;
 		}
 
 		zones = z;
 	}
 
-	/** {"t":"nether","a":"clear|heal|grow|portal|unportal"}: test hooks and the host's "make it go away". Link thread. */
+	/** {"t":"nether","a":"clear|heal|grow|portal|endportal|dragon|killdragon|breakframe|unportal"}: test hooks and the host's "make it go away". Link thread. */
 	public static void command(final String action) {
 		MinecraftServer s = WorldBridge.server();
 		if (s == null) {
@@ -827,6 +1024,60 @@ public final class NetherInfection {
 						MineHeim.LOG.info("nether infection: test portal at {} (lit: {})", base, level.getBlockState(base.above()).is(Blocks.NETHER_PORTAL));
 					}
 				}
+				case "endportal" -> {
+					// a filled End portal 7 blocks east of the player: twelve frames with eyes round a 3x3 portal (tests; a player fills his own frames)
+					List<ServerPlayer> players = s.getPlayerList().getPlayers();
+					if (!players.isEmpty()) {
+						BlockPos c = players.get(0).blockPosition().east(7);
+						for (int dx = -2; dx <= 2; dx++) {
+							for (int dz = -2; dz <= 2; dz++) {
+								boolean ring = (Math.abs(dx) == 2) != (Math.abs(dz) == 2);
+								if (ring) {
+									Direction facing = dx == -2 ? Direction.EAST : dx == 2 ? Direction.WEST : dz == -2 ? Direction.SOUTH : Direction.NORTH;
+									level.setBlock(c.offset(dx, 0, dz), Blocks.END_PORTAL_FRAME.defaultBlockState()
+										.setValue(EndPortalFrameBlock.FACING, facing).setValue(EndPortalFrameBlock.HAS_EYE, true), Block.UPDATE_ALL);
+								}
+							}
+						}
+
+						for (int dx = -1; dx <= 1; dx++) {
+							for (int dz = -1; dz <= 1; dz++) {
+								level.setBlock(c.offset(dx, 0, dz), Blocks.END_PORTAL.defaultBlockState(), Block.UPDATE_ALL);
+							}
+						}
+
+						MineHeim.LOG.info("nether infection: test End portal at {}", c);
+					}
+				}
+				case "dragon" -> {
+					// every End infection at its full reach at once, so the dragon comes (tests)
+					for (Infection i : infections) {
+						if (i.kind == END) {
+							i.radius = maxRadius;
+						}
+					}
+				}
+				case "killdragon" -> {
+					for (Entity e : level.getAllEntities()) {
+						if (e instanceof EnderDragon && e.entityTags().contains(MOB_TAG)) {
+							e.discard();
+						}
+					}
+				}
+				case "breakframe" -> {
+					// take one frame of every lit End portal away (tests)
+					for (Infection i : new ArrayList<>(infections)) {
+						if (i.kind == END && i.lit()) {
+							BlockPos p = BlockPos.of(i.portal.iterator().next());
+							for (BlockPos q : BlockPos.betweenClosed(p.offset(-3, 0, -3), p.offset(3, 0, 3))) {
+								if (level.getBlockState(q).is(Blocks.END_PORTAL_FRAME)) {
+									level.setBlock(q, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+									break;
+								}
+							}
+						}
+					}
+				}
 				case "unportal" -> {
 					// break every infection's portal: its frame's blocks go (tests)
 					for (Infection i : infections) {
@@ -834,7 +1085,7 @@ public final class NetherInfection {
 							BlockPos p = BlockPos.of(k);
 							for (BlockPos q : BlockPos.betweenClosed(p.offset(-1, -1, -1), p.offset(1, 1, 1))) {
 								BlockState st = level.getBlockState(q);
-								if (st.is(Blocks.OBSIDIAN) || st.is(Blocks.NETHER_PORTAL)) {
+								if (st.is(Blocks.OBSIDIAN) || st.is(Blocks.NETHER_PORTAL) || st.is(Blocks.END_PORTAL_FRAME) || st.is(Blocks.END_PORTAL)) {
 									level.setBlock(q, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 								}
 							}
@@ -866,6 +1117,12 @@ public final class NetherInfection {
 		for (Infection i : infections) {
 			JsonObject o = new JsonObject();
 			o.addProperty("id", i.id);
+			o.addProperty("kind", i.kind);
+			o.addProperty("dragonSpawned", i.dragonSpawned);
+			if (i.dragon != null) {
+				o.addProperty("dragon", i.dragon.toString());
+			}
+
 			o.addProperty("radius", i.radius);
 			o.addProperty("cx", i.cx);
 			o.addProperty("cy", i.cy);
@@ -886,6 +1143,7 @@ public final class NetherInfection {
 
 			o.add("crusted", crusted);
 			o.add("pending", longs(i.pending));
+			o.add("reported", longs(i.reported));
 			list.add(o);
 		}
 
@@ -907,6 +1165,9 @@ public final class NetherInfection {
 			JsonObject o = el.getAsJsonObject();
 			Infection i = new Infection();
 			i.id = o.get("id").getAsInt();
+			i.kind = o.has("kind") ? o.get("kind").getAsInt() : NETHER;
+			i.dragonSpawned = o.has("dragonSpawned") && o.get("dragonSpawned").getAsBoolean();
+			i.dragon = o.has("dragon") ? UUID.fromString(o.get("dragon").getAsString()) : null;
 			i.radius = o.get("radius").getAsDouble();
 			i.cx = o.get("cx").getAsDouble();
 			i.cy = o.get("cy").getAsInt();
@@ -923,6 +1184,9 @@ public final class NetherInfection {
 			}
 
 			o.getAsJsonArray("pending").forEach(v -> i.pending.add(v.getAsLong()));
+			if (o.has("reported")) {
+				o.getAsJsonArray("reported").forEach(v -> i.reported.add(v.getAsLong()));
+			}
 			// the crust picks up where it was: every offset already inside the radius was visited
 			while (i.cursor < OFFSET_DIST.length && OFFSET_DIST[i.cursor] <= i.radius) {
 				i.cursor++;

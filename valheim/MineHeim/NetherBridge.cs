@@ -9,6 +9,9 @@ namespace MineHeim
     /// Valheim's half of the Nether infection (mc/NetherInfection.java owns it: a lit Nether portal in Minecraft turns the
     /// land around it into a crust of Nether blocks and spawns Nether mobs there). Here the infected land also becomes
     /// Valheim's own hell, the Ashlands: its ground texture and its clutter, and its weather while the Viking stands in it.
+    /// The End's land (an End portal's) becomes the Mistlands the same way: its dark ground, its clutter, its mist.
+    /// Valheim's creatures react: animals flee a burning portal, creatures on Nether ground burn (the fireproof don't),
+    /// and the End now and then warps a creature a few metres, as it warps endermen.
     /// A pin marks the portal on the map. Valheim's wards go to Minecraft: nothing infects inside a ward.
     /// Nothing here is saved into the Valheim world: the ground's colour and the clutter are redrawn from the infection,
     /// and they go back to normal when it heals.
@@ -21,7 +24,8 @@ namespace MineHeim
             public Vector3 Centre; // Valheim coordinates, the portal's ground
             public float Radius;
             public bool Lit;
-            public int Columns, Cells;
+            public int Columns, Cells, Kind; // Kind: 0 the Nether, 1 the End
+            public bool Dragon;
             public Minimap.PinData Pin;
         }
 
@@ -30,6 +34,10 @@ namespace MineHeim
         internal static string Env = "";
         internal static int PaintedNow => Originals.Count;
         private static readonly Color32 Ashlands = Heightmap.GetBiomeColor(Heightmap.Biome.AshLands);
+        private static readonly Color32 Mistlands = Heightmap.GetBiomeColor(Heightmap.Biome.Mistlands);
+        /// <summary>Where the camera is: how deep in the Nether (heat haze) and in the End (its cold light), 0..1, for the compositor.</summary>
+        internal static float Heat, EndHere;
+        internal static int Burned, Fled, Warped;
         private static readonly AccessTools.FieldRef<Heightmap, Mesh> RenderMesh = AccessTools.FieldRefAccess<Heightmap, Mesh>("m_renderMesh");
         private static readonly AccessTools.FieldRef<EnvMan, string> ForcedEnv = AccessTools.FieldRefAccess<EnvMan, string>("m_forceEnv");
         private static readonly Dictionary<Heightmap, Saved> Originals = new Dictionary<Heightmap, Saved>();
@@ -37,7 +45,6 @@ namespace MineHeim
         private float _nextWards, _nextGrass;
         private string _lastWards = "";
         private bool _grassDirty;
-        private string _envName;
 
         // ------------------------------------------------------------------ from Minecraft
 
@@ -49,7 +56,7 @@ namespace MineHeim
             List<double> n = Messages.Numbers(json, "l");
             var seen = new HashSet<int>();
             bool changed = false;
-            for (int i = 0; i + 8 < n.Count; i += 9)
+            for (int i = 0; i + 10 < n.Count; i += 11)
             {
                 int id = (int)n[i];
                 double ux, uy, uz;
@@ -69,6 +76,15 @@ namespace MineHeim
                 z.Lit = n[i + 5] > 0.5;
                 z.Columns = (int)n[i + 6];
                 z.Cells = (int)n[i + 7];
+                z.Kind = (int)n[i + 9];
+                bool dragon = n[i + 10] > 0.5;
+                if (dragon && !z.Dragon)
+                {
+                    Message("The Ender Dragon has come.");
+                    Plugin.Log.LogInfo("nether infection " + id + ": the Ender Dragon is here");
+                }
+
+                z.Dragon = dragon;
                 if (fresh || wasLit != z.Lit)
                 {
                     Announce(z, fresh);
@@ -106,20 +122,23 @@ namespace MineHeim
 
         private static void Announce(Zone z, bool fresh)
         {
-            Plugin.Log.LogInfo(string.Format("nether infection {0}: {1} at {2}, radius {3:0.0}", z.Id, z.Lit ? (fresh ? "open" : "lit again") : "portal gone, healing", z.Centre, z.Radius));
+            bool end = z.Kind == 1;
+            Plugin.Log.LogInfo(string.Format("nether infection {0} ({1}): {2} at {3}, radius {4:0.0}", z.Id, end ? "end" : "nether",
+                z.Lit ? (fresh ? "open" : "lit again") : "portal gone, healing", z.Centre, z.Radius));
             if (z.Lit && (!fresh || z.Radius < 4f))
             {
                 // (an infection already grown is one from before: the world was loaded, not a portal lit just now)
-                Message(fresh ? "A Nether portal has opened. The land around it is turning to Nether." : "The Nether portal burns again.");
+                Message(end ? (fresh ? "An End portal has opened. The land around it is fading into the End." : "The End portal is open again.")
+                            : (fresh ? "A Nether portal has opened. The land around it is turning to Nether." : "The Nether portal burns again."));
             }
             else if (!fresh)
             {
-                Message("The Nether portal is broken. The land begins to heal.");
+                Message(end ? "The End portal has gone out. The land begins to heal." : "The Nether portal is broken. The land begins to heal.");
             }
 
             if (z.Pin == null && Minimap.instance != null && Plugin.NetherMapPin.Value)
             {
-                z.Pin = Minimap.instance.AddPin(z.Centre, Minimap.PinType.Icon4, "Nether portal", false, false);
+                z.Pin = Minimap.instance.AddPin(z.Centre, Minimap.PinType.Icon4, end ? "End portal" : "Nether portal", false, false);
             }
         }
 
@@ -151,9 +170,9 @@ namespace MineHeim
         internal static void SendConfig()
         {
             Link.Send(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "{{\"t\":\"nethercfg\",\"on\":{0},\"max\":{1:0.##},\"grow\":{2:0.##},\"heal\":{3:0.##},\"mobs\":{4},\"every\":{5}}}",
+                "{{\"t\":\"nethercfg\",\"on\":{0},\"max\":{1:0.##},\"grow\":{2:0.##},\"heal\":{3:0.##},\"mobs\":{4},\"every\":{5},\"end\":{6},\"dragon\":{7}}}",
                 Plugin.NetherEnabled.Value ? "true" : "false", Plugin.NetherMaxRadius.Value, Plugin.NetherGrowPerMinute.Value, Plugin.NetherHealPerMinute.Value,
-                Plugin.NetherMobCap.Value, Plugin.NetherSpawnSeconds.Value));
+                Plugin.NetherMobCap.Value, Plugin.NetherSpawnSeconds.Value, Plugin.EndEnabled.Value ? "true" : "false", Plugin.EndDragon.Value ? "true" : "false"));
         }
 
         // ------------------------------------------------------------------ every frame
@@ -182,6 +201,113 @@ namespace MineHeim
             }
 
             UpdateWeather(player.transform.position);
+            Camera cam = Utils.GetMainCamera();
+            Vector3 eye = cam != null ? cam.transform.position : player.transform.position;
+            Heat = Weight(eye, 0, true);
+            EndHere = Weight(eye, 1, true);
+            if (Time.unscaledTime >= _nextCreatures && Zones.Count > 0)
+            {
+                _nextCreatures = Time.unscaledTime + 2f;
+                Creatures();
+            }
+        }
+
+        private float _nextCreatures;
+
+        /// <summary>Every 2 s: creatures on Nether ground burn (unless fireproof), the End warps one now and then.</summary>
+        private static void Creatures()
+        {
+            foreach (Character c in new List<Character>(Character.GetAllCharacters()))
+            {
+                if (c == null || c.IsPlayer() || c.IsDead() || c.IsTamed() || c.IsBoss() || MobBridge.IsBody(c))
+                {
+                    continue;
+                }
+
+                ZNetView view = c.GetComponent<ZNetView>();
+                if (view == null || !view.IsValid() || !view.IsOwner())
+                {
+                    continue;
+                }
+
+                Vector3 at = c.transform.position;
+                if (Plugin.NetherCreaturesBurn.Value && Weight(at, 0, false) >= 0.5f)
+                {
+                    HitData.DamageModifier fire = c.GetDamageModifiers().GetModifier(HitData.DamageType.Fire);
+                    if (fire != HitData.DamageModifier.Immune && fire != HitData.DamageModifier.Ignore)
+                    {
+                        var hit = new HitData();
+                        hit.m_point = c.GetCenterPoint();
+                        hit.m_dir = Vector3.up;
+                        hit.m_damage.m_fire = Plugin.NetherBurnDamage.Value;
+                        hit.m_hitType = HitData.HitType.Burning;
+                        c.Damage(hit);
+                        Burned++;
+                    }
+                }
+
+                if (Plugin.EndCreaturesWarp.Value && Weight(at, 1, false) >= 0.5f && UnityEngine.Random.value < 0.12f)
+                {
+                    // as the End warps endermen: a few metres to a random spot on the ground
+                    Vector2 d = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(4f, 10f);
+                    Vector3 to = at + new Vector3(d.x, 0f, d.y);
+                    RaycastHit down;
+                    if (Physics.Raycast(to + Vector3.up * 30f, Vector3.down, out down, 60f, LayerMask.GetMask("terrain")))
+                    {
+                        Rigidbody body = c.GetComponent<Rigidbody>();
+                        c.transform.position = down.point + Vector3.up * 0.2f;
+                        if (body != null)
+                        {
+                            body.position = c.transform.position;
+                            body.linearVelocity = Vector3.zero;
+                        }
+
+                        Warped++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>The lit infection an animal should run from (within 10 m of its edge), if any.</summary>
+        internal static bool FleeFrom(Vector3 at, out Vector3 portal)
+        {
+            portal = Vector3.zero;
+            if (!Plugin.NetherAnimalsFlee.Value)
+            {
+                return false;
+            }
+
+            foreach (Zone z in Zones.Values)
+            {
+                if (z.Lit && z.Radius > 4f && Utils.DistanceXZ(at, z.Centre) < z.Radius + 10f)
+                {
+                    portal = z.Centre;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Animals run from a lit portal's land (Valheim's own flee, away from the portal).</summary>
+        [HarmonyPatch(typeof(AnimalAI), nameof(AnimalAI.UpdateAI))]
+        private static class FleePatch
+        {
+            private static readonly System.Reflection.MethodInfo Flee = AccessTools.Method(typeof(BaseAI), "Flee", new[] { typeof(float), typeof(Vector3) });
+
+            private static void Postfix(AnimalAI __instance, float dt, bool __result)
+            {
+                Vector3 portal;
+                if (__result && Zones.Count > 0 && Flee != null && FleeFrom(__instance.transform.position, out portal))
+                {
+                    Character c = __instance.GetComponent<Character>();
+                    if (c != null && !c.IsTamed())
+                    {
+                        Flee.Invoke(__instance, new object[] { dt, portal });
+                        Fled++;
+                    }
+                }
+            }
         }
 
         /// <summary>{"t":"wards","w":[x,z,radius,...]}: active wards within 200 m, in Minecraft coordinates, when they change.</summary>
@@ -218,16 +344,24 @@ namespace MineHeim
             }
 
             bool inside = false;
-            if (Plugin.NetherWeather.Value)
+            int kind = 0;
+            foreach (Zone z in Zones.Values)
             {
-                foreach (Zone z in Zones.Values)
+                if ((z.Kind == 1 ? Plugin.EndWeather.Value : Plugin.NetherWeather.Value) && z.Lit && z.Radius >= 10f && Utils.DistanceXZ(at, z.Centre) < z.Radius - 4f)
                 {
-                    inside |= z.Lit && z.Radius >= 10f && Utils.DistanceXZ(at, z.Centre) < z.Radius - 4f;
+                    inside = true;
+                    kind = z.Kind;
                 }
             }
 
             string forced = ForcedEnv(env) ?? "";
-            string want = inside ? EnvName(env) : "";
+            string want = inside ? EnvName(env, kind) : "";
+            if (inside && want.Length > 0 && Env.Length > 0 && forced == Env && want != Env)
+            {
+                env.SetForceEnvironment(want); // walked from one kind's land into the other's
+                Env = want;
+            }
+
             if (inside && want.Length > 0 && forced.Length == 0)
             {
                 env.SetForceEnvironment(want);
@@ -240,28 +374,31 @@ namespace MineHeim
             }
         }
 
-        /// <summary>The configured environment, or the first of Valheim's whose name says Ashlands.</summary>
-        private string EnvName(EnvMan env)
+        /// <summary>The configured environment, or the first of Valheim's whose name says Ashlands (the Nether) or Mistlands (the End).</summary>
+        private string EnvName(EnvMan env, int kind)
         {
-            if (_envName != null)
+            if (_envNames[kind] != null)
             {
-                return _envName;
+                return _envNames[kind];
             }
 
-            string configured = Plugin.NetherEnvironment.Value.Trim();
-            _envName = "";
+            string configured = (kind == 1 ? Plugin.EndEnvironment.Value : Plugin.NetherEnvironment.Value).Trim();
+            string auto = kind == 1 ? "mistlands" : "ashlands";
+            _envNames[kind] = "";
             foreach (EnvSetup e in env.m_environments)
             {
-                if (configured.Length > 0 && configured != "auto" ? e.m_name == configured : e.m_name.IndexOf("ashlands", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                if (configured.Length > 0 && configured != "auto" ? e.m_name == configured : e.m_name.IndexOf(auto, System.StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    _envName = e.m_name;
+                    _envNames[kind] = e.m_name;
                     break;
                 }
             }
 
-            Plugin.Log.LogInfo("nether weather: environment '" + _envName + "' (" + env.m_environments.Count + " known)");
-            return _envName;
+            Plugin.Log.LogInfo((kind == 1 ? "end" : "nether") + " weather: environment '" + _envNames[kind] + "' (" + env.m_environments.Count + " known)");
+            return _envNames[kind];
         }
+
+        private readonly string[] _envNames = new string[2];
 
         /// <summary>Every environment's name (test hook "envs").</summary>
         internal static string EnvNames()
@@ -280,15 +417,16 @@ namespace MineHeim
 
         // ------------------------------------------------------------------ the ground's colour (Valheim's terrain shader picks textures by vertex colour)
 
-        /// <summary>0..1: how far this point is into an infection's land (fading over the last 3 m of its edge).</summary>
-        internal static float Weight(Vector3 p)
+        /// <summary>0..1: how far this point is into an infection's land (fading over the last 3 m of its edge); kind -1 = either.</summary>
+        internal static float Weight(Vector3 p, int kind = -1, bool litCounts = false)
         {
             float w = 0f;
             foreach (Zone z in Zones.Values)
             {
-                if (z.Radius > 0.5f)
+                if (z.Radius > 0.5f && (kind < 0 || z.Kind == kind))
                 {
-                    w = Mathf.Max(w, Mathf.Clamp01((z.Radius - Utils.DistanceXZ(p, z.Centre)) / 3f));
+                    float zw = Mathf.Clamp01((z.Radius - Utils.DistanceXZ(p, z.Centre)) / 3f);
+                    w = Mathf.Max(w, litCounts && !z.Lit ? zw * 0.5f : zw);
                 }
             }
 
@@ -376,9 +514,11 @@ namespace MineHeim
             Vector3 origin = hm.transform.position;
             for (int i = 0; i < vertices.Length; i++)
             {
-                float w = on ? Weight(origin + vertices[i]) : 0f;
-                any |= w > 0f;
-                colours[i] = w > 0f ? Color32.Lerp(saved.Colours[i], Ashlands, w) : saved.Colours[i];
+                Vector3 v = origin + vertices[i];
+                float wn = on ? Weight(v, 0) : 0f, we = on ? Weight(v, 1) : 0f;
+                any |= wn > 0f || we > 0f;
+                Color32 c = wn > 0f ? Color32.Lerp(saved.Colours[i], Ashlands, wn) : saved.Colours[i];
+                colours[i] = we > 0f ? Color32.Lerp(c, Mistlands, we) : c;
             }
 
             var pixels = (Color[])saved.Mask.Clone();
@@ -387,7 +527,7 @@ namespace MineHeim
                 for (int x = 0; x < mask.width; x++)
                 {
                     Vector3 p = hm.VertexMaskToWorld(x, y);
-                    float w = on ? Weight(p) : 0f;
+                    float w = on ? Weight(p, 0) : 0f; // the Ashlands' lava: the Nether only
                     if (w > 0f)
                     {
                         Color c = pixels[y * mask.width + x];
@@ -479,9 +619,15 @@ namespace MineHeim
 
         // ------------------------------------------------------------------ clutter: the Ashlands' instead of the meadow's grass
 
-        private static bool Infected(Vector3 p)
+        /// <summary>The biome infected land at p wears (the Ashlands for the Nether, the Mistlands for the End), or None.</summary>
+        private static Heightmap.Biome Infected(Vector3 p)
         {
-            return Zones.Count > 0 && Plugin.NetherAshGround.Value && Weight(p) >= 0.5f;
+            if (Zones.Count == 0 || !Plugin.NetherAshGround.Value)
+            {
+                return Heightmap.Biome.None;
+            }
+
+            return Weight(p, 0) >= 0.5f ? Heightmap.Biome.AshLands : Weight(p, 1) >= 0.5f ? Heightmap.Biome.Mistlands : Heightmap.Biome.None;
         }
 
         [HarmonyPatch(typeof(ClutterSystem), nameof(ClutterSystem.GetGroundInfo))]
@@ -489,9 +635,10 @@ namespace MineHeim
         {
             private static void Postfix(bool __result, ref Vector3 point, ref Heightmap.Biome biome)
             {
-                if (__result && Infected(point))
+                Heightmap.Biome b;
+                if (__result && (b = Infected(point)) != Heightmap.Biome.None)
                 {
-                    biome = Heightmap.Biome.AshLands;
+                    biome = b;
                 }
             }
         }
@@ -502,9 +649,10 @@ namespace MineHeim
             private static void Postfix(Vector3 point, ref Heightmap.Biome __result)
             {
                 // a patch's biomes are its corners' together: a corner on infected land lets the Ashlands' clutter in
-                if (__result != Heightmap.Biome.None && Infected(point))
+                Heightmap.Biome b;
+                if (__result != Heightmap.Biome.None && (b = Infected(point)) != Heightmap.Biome.None)
                 {
-                    __result = Heightmap.Biome.AshLands;
+                    __result = b;
                 }
             }
         }

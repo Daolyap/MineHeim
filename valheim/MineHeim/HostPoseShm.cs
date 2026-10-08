@@ -16,6 +16,7 @@ namespace MineHeim
     ///   +24 f64 x  +32 f64 y  +40 f64 z  (camera, Minecraft coordinates)
     ///   +48 f32 yaw  +52 f32 pitch  +56 f32 roll  +60 f32 vertical fov (degrees)
     ///   +64 f32 near  +68 f32 far   +72 i32 flags: 1 = in a world, 2 = first person, 4 = a Valheim menu is open, 8 = Minecraft attached
+    ///   +76 f32 Nether heat at the camera (0..1)  +80 f32 the End at the camera (0..1)
     /// </pre>
     /// </summary>
     internal static unsafe class HostPoseShm
@@ -65,7 +66,7 @@ namespace MineHeim
         }
 
         public static void Write(long frame, double x, double y, double z, float yaw, float pitch, float roll, float fov,
-                                 float near, float far, int flags, long qpc)
+                                 float near, float far, int flags, long qpc, float heat = 0f, float end = 0f)
         {
             if (_base == null)
             {
@@ -93,6 +94,8 @@ namespace MineHeim
             *(float*)(slot + 64) = near;
             *(float*)(slot + 68) = far;
             *(int*)(slot + 72) = flags;
+            *(float*)(slot + 76) = heat;
+            *(float*)(slot + 80) = end;
             Thread.MemoryBarrier();
             *(long*)slot = seq + 2;
             _written++;

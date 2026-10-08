@@ -186,15 +186,16 @@ namespace MineHeim
                             foreach (NetherBridge.Zone z in NetherBridge.Zones.Values)
                             {
                                 cells += z.Cells;
-                                parts.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0}:{2}:{3}:{4:0.0}", z.Id, z.Radius, z.Lit ? "lit" : "healing", z.Columns,
-                                    player != null ? Utils.DistanceXZ(player.transform.position, z.Centre) : -1f));
+                                parts.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0}:{2}:{3}:{4:0.0}:{5}:{6}", z.Id, z.Radius, z.Lit ? "lit" : "healing", z.Columns,
+                                    player != null ? Utils.DistanceXZ(player.transform.position, z.Centre) : -1f, z.Kind == 1 ? "end" : "nether", z.Dragon ? "dragon" : "-"));
                             }
 
                             Plugin.Log.LogInfo(string.Format(CultureInfo.InvariantCulture,
-                                "nether: zones={0} list={1} mobs={2} recolored={3} painted={4} env={5} reports={6} weightHere={7:0.00} cells={8}",
+                                "nether: zones={0} list={1} mobs={2} recolored={3} painted={4} env={5} reports={6} weightHere={7:0.00} cells={8} heat={9:0.00} endHere={10:0.00} burned={11} fled={12} warped={13}",
                                 NetherBridge.Zones.Count, parts.Count == 0 ? "-" : string.Join(",", parts.ToArray()), NetherBridge.Mobs, NetherBridge.Recolored,
                                 NetherBridge.PaintedNow, NetherBridge.Env.Length == 0 ? "-" : NetherBridge.Env, NetherBridge.Reports,
-                                player != null ? NetherBridge.Weight(player.transform.position) : 0f, cells));
+                                player != null ? NetherBridge.Weight(player.transform.position) : 0f, cells, NetherBridge.Heat, NetherBridge.EndHere,
+                                NetherBridge.Burned, NetherBridge.Fled, NetherBridge.Warped));
                         }
 
                         break;

@@ -34,7 +34,10 @@ sit on Valheim's ground behind its trees, his TNT blows craters into it, and Min
 - **One light.** Minecraft's sun follows Valheim's day and night; Valheim's fires light Minecraft's blocks; Minecraft's torches and lava light Valheim.
 - **The Nether comes to Valheim.** Light a Nether portal and the land around it turns to Nether: a crust of netherrack, nylium and soul soil
   over Valheim's ground, fire and fungi, the Ashlands' ash and sky, and Nether mobs (piglins, hoglins, blazes, ghasts...). Break the portal
-  and it heals; wards keep it out. Nobody travels: the Nether comes here.
+  and it heals; wards keep it out. The air shimmers with heat, the Nether's drone plays, animals flee and creatures burn.
+  Nobody travels: the Nether comes here.
+- **And the End.** Fill an End portal and the land fades into the End: end stone, chorus, obsidian spikes with end crystals,
+  endermen and shulkers, the Mistlands' mist, and in the end the Ender Dragon circling its portal. Kill it and the land heals.
 - **Creative or Survival.** F8 switches. Creative gives Steve a builder's kit and flight (double-tap Jump); Survival plays by Minecraft's rules.
   Either way the Viking's health is the one that counts, and Minecraft's hearts show it.
 

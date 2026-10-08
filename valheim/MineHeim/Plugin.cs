@@ -16,7 +16,7 @@ namespace MineHeim
     {
         public const string Guid = "dev.daolyap.mineheim";
         public const string Name = "MineHeim";
-        public const string Version = "0.9.1";
+        public const string Version = "1.0.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -52,7 +52,9 @@ namespace MineHeim
         internal static ConfigEntry<bool> NetherEnabled, NetherAshGround, NetherWeather, NetherMapPin;
         internal static ConfigEntry<float> NetherMaxRadius, NetherGrowPerMinute, NetherHealPerMinute;
         internal static ConfigEntry<int> NetherMobCap, NetherSpawnSeconds;
-        internal static ConfigEntry<string> NetherEnvironment;
+        internal static ConfigEntry<string> NetherEnvironment, EndEnvironment;
+        internal static ConfigEntry<bool> NetherCreaturesBurn, NetherAnimalsFlee, EndEnabled, EndDragon, EndWeather, EndCreaturesWarp;
+        internal static ConfigEntry<float> NetherBurnDamage;
         internal static readonly NetherBridge Nether = new NetherBridge();
         internal static readonly MobBridge Mobs = new MobBridge();
 
@@ -170,9 +172,19 @@ namespace MineHeim
             NetherWeather = Config.Bind("Nether", "AshlandsWeather", true, "Standing deep inside an infection brings the Ashlands' sky and weather.");
             NetherEnvironment = Config.Bind("Nether", "Environment", "auto", "Which of Valheim's environments that is; auto = the first whose name has Ashlands in it.");
             NetherMapPin = Config.Bind("Nether", "MapPin", true, "Mark an infection's portal on the map (not saved).");
+            NetherCreaturesBurn = Config.Bind("Nether", "CreaturesBurn", true, "Valheim's creatures on Nether ground burn (not tamed ones, bosses or the fireproof).");
+            NetherBurnDamage = Config.Bind("Nether", "BurnDamage", 2f, "Fire damage every 2 seconds to a creature on Nether ground (it also catches fire).");
+            NetherAnimalsFlee = Config.Bind("Nether", "AnimalsFlee", true, "Animals (deer, boars, necks...) run from a lit portal's land, Nether or End.");
+            EndEnabled = Config.Bind("End", "Enabled", true,
+                "A filled End portal (twelve frames with eyes) infects the land like a Nether portal: end stone, chorus, obsidian spikes with end crystals, " +
+                "endermen and shulkers, and the Mistlands' look in Valheim. Break a frame or kill the dragon and it heals. Uses the Nether section's reach and speeds.");
+            EndDragon = Config.Bind("End", "Dragon", true, "Once an End infection has spread to three quarters of its reach, the Ender Dragon comes and circles its portal.");
+            EndWeather = Config.Bind("End", "MistlandsWeather", true, "Standing deep inside an End infection brings the Mistlands' sky and mist.");
+            EndEnvironment = Config.Bind("End", "Environment", "auto", "Which of Valheim's environments that is; auto = the first whose name has Mistlands in it.");
+            EndCreaturesWarp = Config.Bind("End", "CreaturesWarp", true, "Now and then the End warps a Valheim creature on its land a few metres, as it warps endermen.");
             Config.SettingChanged += (_, args) =>
             {
-                if (args.ChangedSetting.Definition.Section == "Nether")
+                if (args.ChangedSetting.Definition.Section == "Nether" || args.ChangedSetting.Definition.Section == "End")
                 {
                     NetherBridge.SendConfig();
                 }

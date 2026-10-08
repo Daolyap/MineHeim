@@ -61,6 +61,14 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Nether.AshlandsGround` | on | infected land wears the Ashlands' ground and clutter in Valheim (drawn only, never saved to the world) |
 | `Nether.AshlandsWeather`, `Environment` | on, auto | deep inside an infection, the Ashlands' sky and weather (auto = the first environment named Ashlands...) |
 | `Nether.MapPin` | on | a map pin on each infection's portal (not saved) |
+| `Nether.CreaturesBurn`, `BurnDamage` | on, 2 | Valheim creatures on Nether ground take this fire damage every 2 s (not tamed ones, bosses or the fireproof) |
+| `Nether.AnimalsFlee` | on | animals run from a lit portal's land (Nether or End) |
+| **End** (a filled End portal infects the land; uses the Nether section's reach, speeds and mob numbers) | | |
+| `End.Enabled` | on | End portals infect: end stone, chorus, obsidian spikes with end crystals, endermen and shulkers, the Mistlands' look |
+| `End.Dragon` | on | at three quarters of its reach the Ender Dragon comes and circles the portal; killing it puts the portal out |
+| `End.MistlandsWeather`, `Environment` | on, auto | deep inside, the Mistlands' sky and mist (auto = the first environment named Mistlands...) |
+| `End.CreaturesWarp` | on | now and then the End warps a Valheim creature on its land a few metres |
+| ReShade: `HeatHaze` | 1 | in ReShade's own settings for the MineHeim effect: how strongly the air shimmers over Nether land (0 = off) |
 | **Ground, blocks, world** | | |
 | `Ground.Enabled`, `Radius`, `ProbesPerFrame` | on, 40, 160 | Valheim's terrain as Minecraft barrier blocks |
 | `Blocks.MaxColliders` | 3000 | at most this many Minecraft blocks become colliders in Valheim |

@@ -47,6 +47,7 @@ namespace
 		double x = 0, y = 0, z = 0;
 		int64_t frame = 0, qpc = 0;
 		int32_t flags = 0;
+		float heat = 0, end = 0; // the host's infection where the camera is (Nether heat, the End)
 		bool valid = false;
 	};
 	Pose g_mcPose;
@@ -173,6 +174,8 @@ namespace
 			p.nearClip = read<float>(slot + 64);
 			p.farClip = read<float>(slot + 68);
 			p.flags = read<int32_t>(slot + 72);
+			p.heat = read<float>(slot + 76);
+			p.end = read<float>(slot + 80);
 			if (read<int64_t>(slot) != seq)
 				continue; // being rewritten
 			p.valid = true;
@@ -426,11 +429,11 @@ namespace
 		if (GetTickCount() >= g_nextStatus)
 		{
 			g_nextStatus = GetTickCount() + 5000;
-			char line[256];
-			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u -> active=%d",
+			char line[384];
+			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u heat=%.2f end=%.2f -> active=%d",
 				(g_frameView != nullptr && g_poseView != nullptr) ? 1 : 0, host.valid ? 1 : 0, host.flags, fresh ? 1 : 0, mcFresh ? 1 : 0, g_hasFrame ? 1 : 0,
 				int(g_renderFrame.load()), int(g_markerCalls.load()), (long long)host.frame, (long long)g_newestPoseFrame.load(), (long long)g_mcPose.frame, g_width, g_height,
-				(on && g_hasFrame) ? 1 : 0);
+				host.heat, host.end, (on && g_hasFrame) ? 1 : 0);
 			reshade::log::message(reshade::log::level::info, line);
 		}
 		if (on)
@@ -449,6 +452,8 @@ namespace
 		set3(runtime, "FrameCode", float(host.frame & 0xFFFFFF), float(g_mcPose.frame & 0xFFFFFF), 0.0f);
 		if (const effect_uniform_variable v = runtime->find_uniform_variable(kEffect, "HostPlanes"); v.handle != 0)
 			runtime->set_uniform_value_float(v, host.nearClip, host.farClip);
+		if (const effect_uniform_variable v = runtime->find_uniform_variable(kEffect, "Infection"); v.handle != 0)
+			runtime->set_uniform_value_float(v, std::fmin(std::fmax(host.heat, 0.0f), 1.0f), std::fmin(std::fmax(host.end, 0.0f), 1.0f));
 
 		float predict = 0.0f;
 		if (const effect_uniform_variable v = runtime->find_uniform_variable(kEffect, "PosePrediction"); v.handle != 0)
