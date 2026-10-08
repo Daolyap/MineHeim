@@ -53,6 +53,14 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Lighting.TimeSync` | on | Minecraft's sun follows Valheim's day (off = always noon in Minecraft) |
 | `Lighting.FireLights` | on | Valheim's fires light Minecraft's blocks |
 | `Lighting.MinecraftLamps`, `MaxLamps`, `LampIntensity` | on, 12, 1.4 | Minecraft's lamps light Valheim (the nearest few) |
+| **Nether** (a lit Nether portal infects the land around it) | | |
+| `Nether.Enabled` | on | lit portals infect the land: Nether crust, fire and fungi, Nether mobs; off = portals are just portals |
+| `Nether.MaxRadius` | 48 | how far from its portal an infection spreads (m, up to 96) |
+| `Nether.GrowPerMinute`, `HealPerMinute` | 8, 16 | how fast it spreads while the portal burns, and heals once it is broken (m a minute) |
+| `Nether.MobCap`, `SpawnSeconds` | 10, 8 | at most this many Nether mobs per infection (fewer while it is small), one every this many seconds |
+| `Nether.AshlandsGround` | on | infected land wears the Ashlands' ground and clutter in Valheim (drawn only, never saved to the world) |
+| `Nether.AshlandsWeather`, `Environment` | on, auto | deep inside an infection, the Ashlands' sky and weather (auto = the first environment named Ashlands...) |
+| `Nether.MapPin` | on | a map pin on each infection's portal (not saved) |
 | **Ground, blocks, world** | | |
 | `Ground.Enabled`, `Radius`, `ProbesPerFrame` | on, 40, 160 | Valheim's terrain as Minecraft barrier blocks |
 | `Blocks.MaxColliders` | 3000 | at most this many Minecraft blocks become colliders in Valheim |

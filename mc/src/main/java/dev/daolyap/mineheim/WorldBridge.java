@@ -29,18 +29,27 @@ public final class WorldBridge {
 	private static final Map<BlockPos, Boolean> changes = new LinkedHashMap<>();
 	/** While placing or removing the host's own ground or lights: those changes aren't news to the host (server thread only). */
 	static boolean placingGround;
+	/** The host's exact surface per column, Minecraft y in cm ({"t":"heights"}): the Nether crust is laid on it. */
+	private static final Map<Long, Integer> surfaces = new ConcurrentHashMap<>();
 
 	private WorldBridge() {
 	}
 
 	static void attach(final MinecraftServer s) {
 		server = s;
+		NetherInfection.attach(s);
 		// the host (re)sends its ground when a world starts: barriers sent before this point had nowhere to go
 		MineHeim.events.accept("{\"t\":\"ready\"}");
 	}
 
 	static void detach() {
+		MinecraftServer s = server;
+		if (s != null) {
+			NetherInfection.detach(s);
+		}
+
 		server = null;
+		surfaces.clear();
 		barriers.clear();
 		HostLights.detach();
 		Creatures.detach();
@@ -109,6 +118,28 @@ public final class WorldBridge {
 		});
 	}
 
+	/** {"t":"heights","c":[x,z,cm,...]}: the host's exact surface per column (link thread). */
+	public static void heights(final int[] c) {
+		MinecraftServer s = server;
+		for (int i = 0; i + 2 < c.length; i += 3) {
+			Integer old = surfaces.put(column(c[i], c[i + 1]), c[i + 2]);
+			if (s != null && old != null && Math.floorDiv(old, 100) != Math.floorDiv(c[i + 2], 100)) {
+				int x = c[i], z = c[i + 1], cell = Math.floorDiv(c[i + 2], 100);
+				s.execute(() -> NetherInfection.onSurfaceChanged(s.overworld(), x, z, cell));
+			}
+		}
+	}
+
+	/** The host's surface at a column (Minecraft y), or NaN if the host hasn't sent it. */
+	static double surface(final int x, final int z) {
+		Integer cm = surfaces.get(column(x, z));
+		return cm == null ? Double.NaN : cm / 100.0;
+	}
+
+	private static long column(final int x, final int z) {
+		return ((long) x << 32) | (z & 0xFFFFFFFFL);
+	}
+
 	/** For the host's ground checks: for each {x, y, z} reply 1 if the cell holds a barrier block, else 0 ({"t":"probe","r":[...]}). */
 	public static void probe(final int[] cells) {
 		MinecraftServer s = server;
@@ -165,7 +196,7 @@ public final class WorldBridge {
 
 	/** Whether a block should become a collider in the host: any block with a collision shape, except our own barriers. */
 	private static boolean solidForHost(final ServerLevel level, final BlockPos pos, final BlockState state) {
-		return !state.isAir() && !state.is(Blocks.BARRIER) && !state.getCollisionShape(level, pos).isEmpty();
+		return !state.isAir() && !state.is(Blocks.BARRIER) && !state.getCollisionShape(level, pos).isEmpty() && !NetherInfection.isCrust(pos);
 	}
 
 	/** Arrows the host already hit something with (they stay where they hit and aren't reported again). */
@@ -175,6 +206,7 @@ public final class WorldBridge {
 	static void tick(final MinecraftServer s) {
 		flush(s);
 		HostLights.flush();
+		NetherInfection.tick(s);
 		if (MineHeim.active) {
 			reportProjectiles(s.overworld());
 			HostItems.tick(s.overworld());
@@ -244,7 +276,12 @@ public final class WorldBridge {
 
 	/** Server thread, from Level.setBlock: remember the change; flushed once per tick. */
 	public static void onBlockChanged(final ServerLevel level, final BlockPos pos, final BlockState state) {
-		if (!MineHeim.active || level != level.getServer().overworld()) {
+		if (level != level.getServer().overworld()) {
+			return;
+		}
+
+		NetherInfection.onBlockChanged(level, pos, state); // portals are watched with or without a host
+		if (!MineHeim.active) {
 			return;
 		}
 

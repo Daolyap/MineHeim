@@ -32,6 +32,9 @@ sit on Valheim's ground behind its trees, his TNT blows craters into it, and Min
 - **Items cross between the worlds.** Throw a Valheim item and it lands in Minecraft as its twin (Wood becomes oak logs, Stone cobblestone,
   Iron iron ingots...); throw a Minecraft item and it lands in Valheim. Moved, never copied. About 45 pairs, and you can add your own.
 - **One light.** Minecraft's sun follows Valheim's day and night; Valheim's fires light Minecraft's blocks; Minecraft's torches and lava light Valheim.
+- **The Nether comes to Valheim.** Light a Nether portal and the land around it turns to Nether: a crust of netherrack, nylium and soul soil
+  over Valheim's ground, fire and fungi, the Ashlands' ash and sky, and Nether mobs (piglins, hoglins, blazes, ghasts...). Break the portal
+  and it heals; wards keep it out. Nobody travels: the Nether comes here.
 - **Creative or Survival.** F8 switches. Creative gives Steve a builder's kit and flight (double-tap Jump); Survival plays by Minecraft's rules.
   Either way the Viking's health is the one that counts, and Minecraft's hearts show it.
 

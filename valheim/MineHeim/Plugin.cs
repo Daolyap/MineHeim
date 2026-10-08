@@ -49,6 +49,11 @@ namespace MineHeim
         internal static ConfigEntry<KeyCode> GameModeKey;
         internal static ConfigEntry<float> WeaponDamageScale, MobRadius, WeaponPointDamage;
         internal static ConfigEntry<bool> CreativeInvulnerable, WardsBlockExplosions, PredictMotion;
+        internal static ConfigEntry<bool> NetherEnabled, NetherAshGround, NetherWeather, NetherMapPin;
+        internal static ConfigEntry<float> NetherMaxRadius, NetherGrowPerMinute, NetherHealPerMinute;
+        internal static ConfigEntry<int> NetherMobCap, NetherSpawnSeconds;
+        internal static ConfigEntry<string> NetherEnvironment;
+        internal static readonly NetherBridge Nether = new NetherBridge();
         internal static readonly MobBridge Mobs = new MobBridge();
 
         internal static readonly BarrierCells Cells = new BarrierCells();
@@ -152,6 +157,27 @@ namespace MineHeim
             MinecraftLamps = Config.Bind("Lighting", "MinecraftLamps", true, "Minecraft's torches, lanterns, glowstone and lava light Valheim's world (as Unity point lights).");
             MaxLamps = Config.Bind("Lighting", "MaxLamps", 12, "At most this many of Minecraft's lamps, the nearest, light Valheim at once (each costs frame time).");
             LampIntensity = Config.Bind("Lighting", "LampIntensity", 1.4f, "Brightness of a Minecraft lamp's light in Valheim.");
+            NetherEnabled = Config.Bind("Nether", "Enabled", true,
+                "A lit Nether portal in Minecraft infects the land around it: the ground turns to a crust of Nether blocks, fire, roots and fungi, and the " +
+                "Nether's mobs spawn there. Nobody goes to the Nether: it comes to Valheim. Break the portal and the land heals. Off: portals stay just portals.");
+            NetherMaxRadius = Config.Bind("Nether", "MaxRadius", 48f, "How far from its portal an infection spreads at most (metres, up to 96).");
+            NetherGrowPerMinute = Config.Bind("Nether", "GrowPerMinute", 8f, "How fast it spreads while the portal burns (metres a minute).");
+            NetherHealPerMinute = Config.Bind("Nether", "HealPerMinute", 16f, "How fast the land heals once the portal is broken (metres a minute).");
+            NetherMobCap = Config.Bind("Nether", "MobCap", 10, "At most this many Nether mobs per infection at once (a small infection has fewer). 0 = none.");
+            NetherSpawnSeconds = Config.Bind("Nether", "SpawnSeconds", 8, "Seconds between Nether mob spawns while the Viking is near an infection.");
+            NetherAshGround = Config.Bind("Nether", "AshlandsGround", true,
+                "Infected land also wears the Ashlands' ground and clutter in Valheim (drawn only: nothing is saved to the Valheim world).");
+            NetherWeather = Config.Bind("Nether", "AshlandsWeather", true, "Standing deep inside an infection brings the Ashlands' sky and weather.");
+            NetherEnvironment = Config.Bind("Nether", "Environment", "auto", "Which of Valheim's environments that is; auto = the first whose name has Ashlands in it.");
+            NetherMapPin = Config.Bind("Nether", "MapPin", true, "Mark an infection's portal on the map (not saved).");
+            Config.SettingChanged += (_, args) =>
+            {
+                if (args.ChangedSetting.Definition.Section == "Nether")
+                {
+                    NetherBridge.SendConfig();
+                }
+            };
+
             PillarKey = Config.Bind("Debug", "PillarTest", KeyCode.F9,
                 "Alignment test: puts a Minecraft gold pillar 6 m ahead and logs Unity's own projection of it (BepInEx/mineheim-proj.csv).");
 
@@ -189,6 +215,7 @@ namespace MineHeim
             Mobs.Clear();
             VikingStats.Reset();
             Blocks.Clear();
+            Nether.Reset();
             RequestBlockSync();
             SendGameMode();
             InputBridge.SendSteve();

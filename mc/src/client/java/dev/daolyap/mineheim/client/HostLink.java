@@ -7,6 +7,7 @@ import dev.daolyap.mineheim.Creatures;
 import dev.daolyap.mineheim.HostItems;
 import dev.daolyap.mineheim.HostLights;
 import dev.daolyap.mineheim.MineHeim;
+import dev.daolyap.mineheim.NetherInfection;
 import dev.daolyap.mineheim.WorldBridge;
 import java.net.InetSocketAddress;
 import java.util.Locale;
@@ -39,13 +40,16 @@ import org.java_websocket.server.WebSocketServer;
  * <li>{"t":"steve","on":bool}: Minecraft mode in the host (Steve, his hand and the HUD show); {"t":"interact"}: the host's "use" on a container</li>
  * <li>{"t":"heights","c":[x,z,cm,...]}: the host's exact ground per column (mobs and items are drawn standing on it)</li>
  * <li>{"t":"window","hidden":bool,"host":pid,"quitWithHost":bool}: park the window; follow the host process</li>
+ * <li>{"t":"nethercfg","on":bool,"max":blocks,"grow":blocks/min,"heal":blocks/min,"mobs":cap,"every":s}: the Nether infection's settings;
+ * {"t":"wards","w":[x,z,radius,...]}: the host's wards (nothing infects inside them); {"t":"nether","a":"clear|heal|grow"}</li>
  * </ul>
  * Minecraft to host: {"t":"hello",...} on connect, {"t":"ready"} when a Minecraft world has started (resend the ground), {"t":"explosion","pos":[x,y,z],"r":radius,"src":"tnt"},
  * {"t":"blocks","set":[x,y,z,...],"clear":[x,y,z,...]}, {"t":"proj","p":[[id,kind,x,y,z],...]},
  * {"t":"melee","item":...}, {"t":"pteleport","pos":[x,y,z]}, {"t":"shield","up":bool}, {"t":"hurt","amount":hp,"src":mob,"pos":[x,y,z]},
  * {"t":"mclights","set":[x,y,z,level,...],"clear":[x,y,z,...]}, {"t":"itemout","id":entity,"item":id,"n":count,"pos":[x,y,z]},
  * {"t":"itemtaken","id":entity,"item":id,"n":count,"pos":[x,y,z]}, {"t":"query",...},
- * {"t":"mobs","m":[[id,type,x,y,z,width,height,health,maxHealth,hostile],...]}, {"t":"chit","id":creature,"amount":hp,"src":mob,"by":mob id,"ranged":bool,"pos":[x,y,z]}.
+ * {"t":"mobs","m":[[id,type,x,y,z,width,height,health,maxHealth,hostile],...]}, {"t":"chit","id":creature,"amount":hp,"src":mob,"by":mob id,"ranged":bool,"pos":[x,y,z]},
+ * {"t":"infect","l":[[id,x,y,z,radius,lit,columns,cells,waiting],...],"mobs":n}: the Nether infections (once a second when changed).
  */
 public final class HostLink extends WebSocketServer {
 	private static HostLink instance;
@@ -99,7 +103,14 @@ public final class HostLink extends WebSocketServer {
 						WorldBridge.unsolid(ints(m.getAsJsonArray("r")));
 					}
 				}
-				case "heights" -> HostView.heights(ints(m.getAsJsonArray("c")));
+				case "heights" -> {
+					int[] c = ints(m.getAsJsonArray("c"));
+					HostView.heights(c);
+					WorldBridge.heights(c);
+				}
+				case "nethercfg" -> NetherInfection.configure(m);
+				case "wards" -> NetherInfection.wards(m.getAsJsonArray("w"));
+				case "nether" -> NetherInfection.command(m.get("a").getAsString());
 				case "probe" -> WorldBridge.probe(ints(m.getAsJsonArray("c")));
 				case "clear" -> WorldBridge.clearSolid();
 				case "cmd" -> WorldBridge.command(m.get("c").getAsString());

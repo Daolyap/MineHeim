@@ -103,6 +103,53 @@ namespace MineHeim.Core
             return result;
         }
 
+        /// <summary>
+        /// Every number under "key", flattened, nested arrays included ({"t":"infect","l":[[1,2.5,3],[4,5,6]]} -> 1, 2.5, 3, 4, 5, 6).
+        /// Empty if the key is absent or not an array.
+        /// </summary>
+        public static System.Collections.Generic.List<double> Numbers(string json, string key)
+        {
+            var result = new System.Collections.Generic.List<double>();
+            int at = json.IndexOf("\"" + key + "\":[", StringComparison.Ordinal);
+            if (at < 0)
+            {
+                return result;
+            }
+
+            int depth = 0;
+            for (int i = at + key.Length + 3; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (c == '[')
+                {
+                    depth++;
+                }
+                else if (c == ']')
+                {
+                    if (--depth == 0)
+                    {
+                        break;
+                    }
+                }
+                else if (c == '-' || (c >= '0' && c <= '9'))
+                {
+                    int start = i;
+                    while (i + 1 < json.Length && (char.IsDigit(json[i + 1]) || json[i + 1] == '.' || json[i + 1] == 'e' || json[i + 1] == 'E' || json[i + 1] == '-' || json[i + 1] == '+'))
+                    {
+                        i++;
+                    }
+
+                    double v;
+                    if (double.TryParse(json.Substring(start, i - start + 1), NumberStyles.Float, Inv, out v))
+                    {
+                        result.Add(v);
+                    }
+                }
+            }
+
+            return result;
+        }
+
         /// <summary>The integer under "key" in a flat JSON message ({"t":"selected","n":3}), or fallback.</summary>
         public static int IntValue(string json, string key, int fallback)
         {

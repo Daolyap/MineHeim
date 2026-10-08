@@ -163,6 +163,9 @@ namespace MineHeim.Core.Tests
 
         private static void GroundAndBlocksMessages()
         {
+            var nums = Messages.Numbers("{\"t\":\"infect\",\"l\":[[1,-2.5,103,4.25,1e1],[2,0,0,0,0]],\"mobs\":3}", "l");
+            Check(nums.Count == 10 && nums[1] == -2.5 && nums[4] == 10 && nums[5] == 2, "nested numbers: " + string.Join(",", nums));
+            Check(Messages.Numbers("{\"t\":\"infect\",\"l\":[],\"mobs\":3}", "l").Count == 0 && Messages.Numbers("{}", "l").Count == 0, "empty numbers");
             var add = new System.Collections.Generic.List<int> { -68, 192, 99, 100, 5, -7, 0, 0 };
             var rem = new System.Collections.Generic.List<int> { 1, 2, 3, 4 };
             string g = Messages.Ground(add, rem);

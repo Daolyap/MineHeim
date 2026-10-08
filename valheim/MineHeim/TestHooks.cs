@@ -179,6 +179,36 @@ namespace MineHeim
                             MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, Plugin.PredictMotion.Value ? "on" : "off", ScreenBridge.Open ? ScreenBridge.Name : "none",
                             player != null ? player.transform.position.x : 0f, player != null ? player.transform.position.z : 0f));
                         break;
+                    case "nether":
+                        {
+                            var parts = new List<string>();
+                            int cells = 0;
+                            foreach (NetherBridge.Zone z in NetherBridge.Zones.Values)
+                            {
+                                cells += z.Cells;
+                                parts.Add(string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0}:{2}:{3}:{4:0.0}", z.Id, z.Radius, z.Lit ? "lit" : "healing", z.Columns,
+                                    player != null ? Utils.DistanceXZ(player.transform.position, z.Centre) : -1f));
+                            }
+
+                            Plugin.Log.LogInfo(string.Format(CultureInfo.InvariantCulture,
+                                "nether: zones={0} list={1} mobs={2} recolored={3} painted={4} env={5} reports={6} weightHere={7:0.00} cells={8}",
+                                NetherBridge.Zones.Count, parts.Count == 0 ? "-" : string.Join(",", parts.ToArray()), NetherBridge.Mobs, NetherBridge.Recolored,
+                                NetherBridge.PaintedNow, NetherBridge.Env.Length == 0 ? "-" : NetherBridge.Env, NetherBridge.Reports,
+                                player != null ? NetherBridge.Weight(player.transform.position) : 0f, cells));
+                        }
+
+                        break;
+                    case "nethercmd":
+                        // clear | heal | grow, straight to Minecraft's infection
+                        Link.Send("{\"t\":\"nether\",\"a\":\"" + (w.Length > 1 ? w[1] : "clear") + "\"}");
+                        break;
+                    case "mcraw":
+                        // a raw message to Minecraft: mcraw {"t":"nethercfg","grow":120}
+                        Link.Send(raw.Trim().Substring(5).Trim());
+                        break;
+                    case "envs":
+                        Plugin.Log.LogInfo("environments: " + NetherBridge.EnvNames());
+                        break;
                     case "creativegod":
                         // older tests measure damage in Creative: "creativegod off" lets it land again (not saved to the config)
                         CreativeViking.TestOff = w.Length > 1 && w[1] == "off";

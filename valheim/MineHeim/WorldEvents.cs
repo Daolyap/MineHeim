@@ -140,10 +140,20 @@ namespace MineHeim
                 dir = player.GetCenterPoint() - new Vector3((float)ux, (float)uy, (float)uz);
             }
 
-            HitData hit = MakeHit(player.GetCenterPoint(), dir, 15f);
-            hit.m_damage.m_blunt = amount;
-            hit.m_blockable = true; // a raised shield (Minecraft's, or the Viking's own) can stop it
-            hit.m_dodgeable = true;
+            bool fire = Messages.BoolValue(json, "fire", false);
+            HitData hit = MakeHit(player.GetCenterPoint(), dir, fire ? 0f : 15f);
+            if (fire)
+            {
+                // Minecraft's fire, lava or a magma block under Steve: Valheim fire damage (it sets the Viking burning; fire resistance helps)
+                hit.m_damage.m_fire = amount;
+            }
+            else
+            {
+                hit.m_damage.m_blunt = amount;
+                hit.m_blockable = true; // a raised shield (Minecraft's, or the Viking's own) can stop it
+                hit.m_dodgeable = true;
+            }
+
             player.Damage(hit);
             MobHits++;
             Plugin.Log.LogInfo(string.Format("{0} hit Steve: {1:0.0} Valheim damage", Messages.StringValue(json, "src", "a Minecraft mob"), amount));
@@ -581,6 +591,18 @@ namespace MineHeim
         private static readonly AccessTools.FieldRef<List<PrivateArea>> AllWards = AccessTools.StaticFieldRefAccess<List<PrivateArea>>(AccessTools.Field(typeof(PrivateArea), "m_allAreas"));
 
         private static readonly System.Func<PrivateArea, bool> WardEnabled = AccessTools.MethodDelegate<System.Func<PrivateArea, bool>>(AccessTools.Method(typeof(PrivateArea), "IsEnabled"));
+
+        /// <summary>Every active ward, whoever owns it.</summary>
+        internal static IEnumerable<PrivateArea> ActiveWards()
+        {
+            foreach (PrivateArea ward in AllWards())
+            {
+                if (ward != null && WardEnabled(ward))
+                {
+                    yield return ward;
+                }
+            }
+        }
 
         /// <summary>Inside the area of any active ward, whoever owns it (Valheim's own test: distance on the ground plane).</summary>
         internal static bool InWard(Vector3 point)

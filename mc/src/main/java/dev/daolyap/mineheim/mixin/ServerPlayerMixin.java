@@ -36,7 +36,7 @@ abstract class ServerPlayerMixin {
 	/**
 	 * The host owns the player's health: Minecraft never applies damage to Steve. A hit by a mob (melee or its projectile)
 	 * goes to the host as {"t":"hurt","amount":hp,"src":"zombie","pos":[x,y,z]} so the host's own player takes it (and can
-	 * block it there). Explosions are not sent: the host already takes those through the "explosion" event. Falls, the void,
+	 * block it there). Fire, lava and magma blocks burn it outside Creative ("fire":true). Explosions are not sent: the host already takes those through the "explosion" event. Falls, the void,
 	 * suffocation and the like are not sent either: the host moves the player, Minecraft's physics never decide its fate.
 	 */
 	@Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
@@ -52,6 +52,10 @@ abstract class ServerPlayerMixin {
 			String src = BuiltInRegistries.ENTITY_TYPE.getKey(attacker.getType()).getPath();
 			MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"hurt\",\"amount\":%.2f,\"src\":\"%s\",\"pos\":[%.3f,%.3f,%.3f]}",
 				amount, src, from.x, from.y, from.z));
+		} else if (attacker == null && amount > 0f && source.is(DamageTypeTags.IS_FIRE) && !((ServerPlayer) (Object) this).isCreative()) {
+			// fire, lava, a magma block (the Nether infection's ground): the host's player burns, as fire damage
+			MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"hurt\",\"amount\":%.2f,\"src\":\"%s\",\"fire\":true,\"pos\":[%.3f,%.3f,%.3f]}",
+				amount, source.getMsgId(), self.getX(), self.getY(), self.getZ()));
 		}
 
 		cir.setReturnValue(false);

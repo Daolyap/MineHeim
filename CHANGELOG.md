@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 (in progress, branch `v1/nether-infection`)
+
+- **The Nether comes to Valheim.** Light a Nether portal in Minecraft (an obsidian frame and flint and steel; in Survival, throw
+  Valheim's Obsidian, Flint and Iron across for them) and nobody goes through it: instead the land around it turns to Nether. Minecraft lays a crust of netherrack, crimson and warped nylium, soul soil, magma
+  and Nether ores over Valheim's ground, with fire, roots and fungi on top, spreading out from the portal (8 m a minute, up to 48 m).
+  In Valheim the infected ground becomes the Ashlands' (ash with glowing lava cracks, the Ashlands' clutter instead of grass), and
+  standing deep inside it brings the Ashlands' sky and ash rain. Ash, spores and embers drift in the air.
+- **Nether mobs spawn on infected land:** zombified piglins, piglins and magma cubes; hoglins, blazes and wither skeletons as it
+  grows; the odd ghast once it is big (its fireballs blow craters into Valheim). They fight Valheim's creatures like any Minecraft mob.
+- **Fire, lava and magma blocks burn the Viking** in Survival (Valheim fire damage: he catches fire, fire resistance helps).
+- **Break the portal and the land heals**, outside in, until it is as it was. A **ward** keeps an infection out of its area, and placing
+  one on infected land cleans it. The portal gets a map pin. Infections are saved with the Minecraft world.
+- Nothing is saved into the Valheim world: the Ashlands look is drawn, not painted into the terrain. Settings: `Nether.*`.
+
 ## 0.9.1 — fixes from the first real play test
 
 - **F7 now switches who you are.** Off: you are the Viking (his own body, hotbar and controls; Minecraft's blocks, mobs and items stay

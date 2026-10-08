@@ -130,6 +130,9 @@ namespace MineHeim
                 case "screen":
                     ScreenBridge.OnScreen(message);
                     return;
+                case "infect":
+                    Plugin.Nether.OnInfect(message);
+                    return;
                 case "itemout":
                     Plugin.Items.OnOffer(message);
                     return;
@@ -261,6 +264,7 @@ namespace MineHeim
             Plugin.Lights.Tick(player, yOffset);
             Plugin.Mobs.Tick(player, yOffset);
             VikingStats.Tick(player);
+            Plugin.Nether.Tick(player);
             Plugin.Blocks.Tick(yOffset, Plugin.MaxColliders.Value);
             Plugin.Hooks.Tick(player, yOffset);
 
