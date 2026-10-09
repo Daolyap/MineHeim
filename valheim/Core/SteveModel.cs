@@ -89,7 +89,11 @@ namespace MineHeim.Core
             {
                 case Part.Head:
                     Box(mesh, -4, 0, -4, 8, 8, 8, 0, 0, 0f, texWidth, texHeight);
-                    Box(mesh, -4, 0, -4, 8, 8, 8, 32, 0, 0.5f, texWidth, texHeight);
+                    if (modern || opaque == null || !SolidHat(opaque))
+                    {
+                        Box(mesh, -4, 0, -4, 8, 8, 8, 32, 0, 0.5f, texWidth, texHeight);
+                    }
+
                     break;
                 case Part.Body:
                     Box(mesh, -4, -12, -2, 8, 12, 4, 16, 16, 0f, texWidth, texHeight);
@@ -135,6 +139,26 @@ namespace MineHeim.Core
 
             _opaque = null;
             return mesh;
+        }
+
+        /// <summary>
+        /// Old 64x32 skins often fill the unused hat area with a solid colour; Minecraft treats a hat without a single
+        /// see-through pixel as no hat at all (its "Notch transparency hack"), and so does this.
+        /// </summary>
+        private static bool SolidHat(Func<int, int, bool> opaque)
+        {
+            for (int y = 0; y < 16; y++)
+            {
+                for (int x = 32; x < 64; x++)
+                {
+                    if (!opaque(x, y))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

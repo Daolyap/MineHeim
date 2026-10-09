@@ -377,6 +377,10 @@ namespace MineHeim.Core.Tests
             // an old 64x32 skin: only the hat as an outer layer, the left limbs borrow the right limbs' pixels
             var oldLeg = SteveModel.Build(SteveModel.Part.LeftLeg, false, 64, 32);
             Check(oldLeg.VertexCount == 24 && Math.Abs(oldLeg.Uvs[1] - (1 - 20 / 32f)) < 1e-6, "64x32 skin: left leg is one box textured from the right leg's");
+            // an old skin whose hat area is solid (no see-through pixel) has no hat, as in Minecraft; a modern one keeps it
+            Check(SteveModel.Build(SteveModel.Part.Head, false, 64, 32, (x, y) => true).VertexCount == 24, "64x32 skin with a solid hat area: no hat");
+            Check(SteveModel.Build(SteveModel.Part.Head, false, 64, 32, (x, y) => !(x == 63 && y == 15)).VertexCount > 24, "64x32 skin with a real hat keeps it");
+            Check(SteveModel.Build(SteveModel.Part.Head, false, 64, 64, (x, y) => true).VertexCount > 24, "64x64 skin with a solid hat keeps it");
         }
 
         private static void SteveModelOuterLayerPerPixel()
