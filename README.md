@@ -20,6 +20,7 @@ sit on Valheim's ground behind its trees, his TNT blows craters into it, and Min
 ## What you can do
 
 - **Play Steve in Valheim.** Valheim's camera drives Minecraft's; Steve walks, jumps and swims with your Viking (whose body is hidden).
+  Valheim draws him itself, in the same frame, so he never trails behind when you run or turn; classic Steve, your own Minecraft skin or any skin file.
 - **Build, mine and blow things up.** Place and break Minecraft blocks on Valheim's ground; your Viking and Valheim's creatures bump into them.
   A Minecraft pickaxe digs Valheim's terrain like a Valheim pickaxe, an axe fells its trees.
 - **Fight with Minecraft weapons.** Swords, bows (Power and Infinity included), TNT, creeper eggs and ender pearls work on Valheim's creatures,
@@ -59,6 +60,9 @@ Step-by-step with screenshots: [docs/INSTALL.md](docs/INSTALL.md). To remove it,
 |---|---|
 | **F7** | Minecraft mode: you are Steve. The mouse buttons break, place and hit (anything in hand hits Valheim's creatures), the wheel and 1-9 pick Minecraft's hotbar, **Q** throws (Ctrl+Q the stack), **Tab** opens Minecraft's inventory, **T** its chat, **/** a command. F7 again: you are the Viking, with everything Valheim's (Minecraft's blocks, mobs and items stay). |
 | **F8** | Steve: Creative <-> Survival |
+| **F10** | MineHeim's status, top left: Minecraft attached, frame rate and delay, who draws Steve, the portals near you. If Minecraft is not running (it crashed, or you closed it), it starts it again. |
+| **F11** | who draws Steve: Valheim (never trails behind) or Minecraft (with his held item and armour) |
+| **Alt + wheel** (Minecraft mode) | zoom Valheim's camera (the wheel alone picks Minecraft's hotbar) |
 | **Jump, Jump** (double-tap, as Steve) | Creative: fly or land. Hold Jump to rise, Left Ctrl to sink, Run to go faster. |
 | **Right mouse, held** (Minecraft mode) | raise Minecraft's shield |
 | **drop an item** (Valheim inventory) | items with a Minecraft twin cross into Minecraft |

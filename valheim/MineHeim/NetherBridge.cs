@@ -48,7 +48,7 @@ namespace MineHeim
 
         // ------------------------------------------------------------------ from Minecraft
 
-        /// <summary>{"t":"infect","l":[[id,x,y,z,radius,lit,columns,cells,waiting],...],"mobs":n}.</summary>
+        /// <summary>{"t":"infect","l":[[id,x,y,z,radius,lit,columns,cells,waiting,kind,dragon],...],"mobs":n}.</summary>
         public void OnInfect(string json)
         {
             Reports++;
@@ -109,7 +109,7 @@ namespace MineHeim
 
                     Zones.Remove(id);
                     Plugin.Log.LogInfo("nether infection " + id + ": healed");
-                    Message("The Nether's hold on the land is gone.");
+                    Message(z.Kind == 1 ? "The End has let go of the land." : "The Nether's hold on the land is gone.");
                     changed = true;
                 }
             }

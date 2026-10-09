@@ -14,6 +14,8 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | **Input** | | |
 | `Input.ToggleKey` | F7 | Minecraft mode: on, you are Steve (Minecraft's hotbar and controls); off, the Viking |
 | `Input.GameModeKey` | F8 | Steve: Creative <-> Survival |
+| `Input.StatusKey` | F10 | MineHeim's status on screen; starts Minecraft again if it is not attached |
+| `Input.AvatarKey` | F11 | switch `Steve.Avatar` between Native (Valheim draws Steve) and Minecraft |
 | `Input.StartInMinecraftMode` | off | start every game in Minecraft mode |
 | **Steve** | | |
 | `Steve.GameMode` | Creative | Creative: builder's kit and flight; Survival: Minecraft's rules, no flight. Valheim owns health in both |

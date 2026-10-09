@@ -5,7 +5,7 @@ namespace MineHeim.Core
 {
     /// <summary>
     /// Minecraft's player model (the classic 64x64 skin layout, wide or slim arms) as plain boxes, and its animation
-    /// (walk, idle, attack swing, crouch, sitting), Unity-free so it can be tested. The host draws Steve itself from this,
+    /// (walk, idle, attack swing, crouch, sitting, a raised shield), Unity-free so it can be tested. The host draws Steve itself from this,
     /// on its own player in the same frame, instead of using Minecraft's picture of him (which arrives a frame or two
     /// late and trails behind whenever the player moves or turns).
     ///
@@ -240,6 +240,8 @@ namespace MineHeim.Core
             /// <summary>Seconds since the model was made (the idle arm sway).</summary>
             public float Age;
             public bool Crouch, Sit, Swim;
+            /// <summary>The shield is raised (the off hand, Minecraft's left arm, held up across the chest).</summary>
+            public bool Block;
         }
 
         /// <summary>
@@ -268,6 +270,13 @@ namespace MineHeim.Core
                 Add(rotation, Part.LeftArm, -(float)Math.PI / 5f, 0f, 0f);
                 Set(rotation, Part.RightLeg, -1.4137167f, (float)Math.PI / 10f, 0.07853982f);
                 Set(rotation, Part.LeftLeg, -1.4137167f, -(float)Math.PI / 10f, -0.07853982f);
+            }
+
+            if (input.Block)
+            {
+                int l = (int)Part.LeftArm * 3;
+                rotation[l] = rotation[l] * 0.5f - 0.9424779f;
+                rotation[l + 1] = (float)Math.PI / 6f;
             }
 
             // the swing (Minecraft's setupAttackAnimation, right hand)

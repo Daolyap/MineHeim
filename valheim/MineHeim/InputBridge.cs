@@ -88,6 +88,20 @@ namespace MineHeim
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, "Steve: " + Plugin.GameMode.Value);
             }
 
+            if (Player.m_localPlayer != null && Cursor.lockState == CursorLockMode.Locked)
+            {
+                if (ZInput.GetKeyDown(Plugin.StatusKey.Value, false))
+                {
+                    ShowStatus(Player.m_localPlayer);
+                }
+
+                if (ZInput.GetKeyDown(Plugin.AvatarKey.Value, false))
+                {
+                    Plugin.SteveAvatarMode.Value = SteveAvatar.Native ? Plugin.AvatarMode.Minecraft : Plugin.AvatarMode.Native;
+                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, SteveAvatar.Native ? "Steve: drawn by Valheim" : "Steve: drawn by Minecraft (with his held item)");
+                }
+            }
+
             // the Viking's E on a Minecraft chest, crafting table or furnace (nothing of Valheim's under the crosshair) opens it
             Player local = Player.m_localPlayer;
             if (!McMode && local != null && Link.Connected && !ScreenBridge.Open && Cursor.lockState == CursorLockMode.Locked &&
@@ -122,7 +136,7 @@ namespace MineHeim
                 Forward(mouse.rightButton, "use", ref _useDown);
                 Forward(mouse.middleButton, "pick", ref _pickDown);
                 float wheel = mouse.scroll.ReadValue().y;
-                if (wheel > 0.5f || wheel < -0.5f)
+                if ((wheel > 0.5f || wheel < -0.5f) && !AltHeld)
                 {
                     int notches = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(wheel) / 120f));
                     for (int i = 0; i < notches; i++)
@@ -163,6 +177,50 @@ namespace MineHeim
                     bool stack = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
                     Link.Send("{\"t\":\"key\",\"k\":\"drop\",\"down\":true,\"stack\":" + (stack ? "true" : "false") + "}");
                 }
+            }
+        }
+
+        /// <summary>Alt held: the wheel zooms Valheim's camera even in Minecraft mode (it otherwise turns Minecraft's hotbar).</summary>
+        public static bool AltHeld => Keyboard.current != null && Keyboard.current.altKey.isPressed;
+
+        /// <summary>The status key: what MineHeim is doing, top left; starts Minecraft again if it is not attached.</summary>
+        private static void ShowStatus(Player player)
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            if (Link.Connected)
+            {
+                lines.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture, "MineHeim: Minecraft attached, {0:0} fps, its picture {1:0.0} frame(s) behind",
+                    PoseSender.Fps, MotionPrediction.LagFrames));
+            }
+            else
+            {
+                lines.Add("MineHeim: Minecraft not attached: " + MinecraftLauncher.StartAgain());
+            }
+
+            lines.Add((McMode ? "You are Steve (" + Plugin.GameMode.Value + ")" : "You are the Viking (F7: Steve)") + ", Steve drawn by " +
+                      (SteveAvatar.Native ? "Valheim, skin " + SteveAvatar.SkinSource : "Minecraft"));
+            int shown = 0;
+            foreach (NetherBridge.Zone z in NetherBridge.Zones.Values)
+            {
+                if (shown++ == 3)
+                {
+                    break;
+                }
+
+                lines.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} portal {1:0} m away: {2}, {3:0} m across{4}",
+                    z.Kind == 1 ? "End" : "Nether", Utils.DistanceXZ(player.transform.position, z.Centre), z.Lit ? "open" : "out, healing", z.Radius * 2f,
+                    z.Dragon ? ", the dragon is here" : ""));
+            }
+
+            if (NetherBridge.Zones.Count == 0)
+            {
+                lines.Add("No Nether or End portal burning");
+            }
+
+            foreach (string line in lines)
+            {
+                player.Message(MessageHud.MessageType.TopLeft, line);
+                Plugin.Log.LogInfo("status: " + line);
             }
         }
 
@@ -246,15 +304,15 @@ namespace MineHeim
         }
     }
 
-    /// <summary>The wheel moves Minecraft's hotbar, not Valheim's camera zoom.</summary>
+    /// <summary>The wheel moves Minecraft's hotbar, not Valheim's camera zoom (Alt + wheel still zooms).</summary>
     [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetMouseScrollWheel))]
     internal static class ScrollPatch
     {
         private static bool Prefix(ref float __result)
         {
-            if (!InputBridge.Active)
+            if (!InputBridge.Active || InputBridge.AltHeld)
             {
-                return true;
+                return true; // Alt + wheel: Valheim's camera zoom, also in Minecraft mode
             }
 
             __result = 0f;

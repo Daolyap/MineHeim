@@ -1,12 +1,19 @@
 # Changelog
 
-## 1.0.0 (in progress, branch `v1/nether-infection`)
+## 1.0.0 (release candidate, branch `v1/nether-infection`: play test pending)
 
 - **Steve no longer trails or doubles up when you run or turn.** Valheim now draws Steve itself, on the Viking in the same frame,
   instead of using Minecraft's picture of him (which arrives a frame or two late). He walks, crouches, sits, turns his head and
   swings his arm when Minecraft does. For now he carries no held item or armour; `Steve.Avatar = Minecraft` brings back the old way.
 - **Skins:** `Steve.Skin` = Steve (classic, the default), Account (your Minecraft account's own skin, slim arms included) or File
-  (any skin PNG, `Steve.SkinFile`).
+  (any skin PNG, `Steve.SkinFile`). Old 64x32 skins work too (a solid hat area is no hat, as in Minecraft). A raised shield
+  shows: Steve holds his left arm up across his chest.
+- **New keys:** F10 shows MineHeim's status (and starts Minecraft again if it crashed or was closed), F11 switches who draws
+  Steve, and Alt + wheel zooms Valheim's camera in Minecraft mode.
+- **The End and its dragon, finished:** a dragon that is only out of sight (far away, or still loading after a restart) no
+  longer counts as killed; if the portal goes out while the dragon lives (a broken frame), the dragon leaves with the End; a
+  portal filled again can call a new dragon. A portal lit again after healing a long while shows its land again at once.
+  The infections' mobs leave once their land has healed (no piglins left roaming the Meadows). The End's healing says so.
 
 - **The Nether comes to Valheim.** Light a Nether portal in Minecraft (an obsidian frame and flint and steel; in Survival, throw
   Valheim's Obsidian, Flint and Iron across for them) and nobody goes through it: instead the land around it turns to Nether. Minecraft lays a crust of netherrack, crimson and warped nylium, soul soil, magma

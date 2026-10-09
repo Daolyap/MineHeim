@@ -19,6 +19,11 @@ namespace MineHeim
     /// </summary>
     internal static class SteveAvatar
     {
+        // ImageConversion.LoadImage (PNG -> texture), found at run time: compiling against UnityEngine.ImageConversionModule
+        // fails on Unity 6 (its Span overloads need netstandard 2.1, which a net472 plugin does not see)
+        private static readonly MethodInfo LoadImage = Type.GetType("UnityEngine.ImageConversion, UnityEngine.ImageConversionModule")
+            ?.GetMethod("LoadImage", new[] { typeof(Texture2D), typeof(byte[]), typeof(bool) });
+
         // standing at a ship's helm is "attached" too: only a seat (not on a ship) sits him down
         private static readonly FieldInfo AttachedToShip = AccessTools.Field(typeof(Player), "m_attachedToShip");
         private static readonly string[] ShaderNames = { "Standard", "Legacy Shaders/Diffuse", "Mobile/Diffuse", "Unlit/Texture" };
@@ -45,6 +50,10 @@ namespace MineHeim
 
         /// <summary>Where Steve's skin came from (for the perf line and the tests).</summary>
         internal static string SkinSource = "placeholder";
+
+        /// <summary>The shader that draws him, and how many arm swings Minecraft sent (status key, test hook "steve").</summary>
+        internal static string ShaderName = "";
+        internal static int Swings;
 
         internal static bool Native => Plugin.SteveAvatarMode.Value == Plugin.AvatarMode.Native;
 
@@ -131,8 +140,14 @@ namespace MineHeim
 
         private static void SetSkin(byte[] png, bool slim, string source)
         {
+            if (LoadImage == null)
+            {
+                Plugin.Log.LogWarning("steve skin (" + source + "): this Unity has no ImageConversion.LoadImage, keeping the built-in skin");
+                return;
+            }
+
             var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!ImageConversion.LoadImage(texture, png, false) || texture.width != 64 || (texture.height != 64 && texture.height != 32))
+            if (!(bool)LoadImage.Invoke(null, new object[] { texture, png, false }) || texture.width != 64 || (texture.height != 64 && texture.height != 32))
             {
                 Plugin.Log.LogWarning("steve skin (" + source + "): not a 64x64 or 64x32 PNG (" + texture.width + "x" + texture.height + "), keeping the old one");
                 UnityEngine.Object.Destroy(texture);
@@ -179,7 +194,11 @@ namespace MineHeim
         }
 
         /// <summary>{"t":"armswing"}: Minecraft swung Steve's arm (attack, mining, placing, using).</summary>
-        internal static void OnArmSwing() => Arm.Start();
+        internal static void OnArmSwing()
+        {
+            Arm.Start();
+            Swings++;
+        }
 
         // ------------------------------------------------------------------ the model
 
@@ -239,6 +258,7 @@ namespace MineHeim
                 }
 
                 Plugin.Log.LogInfo("steve: drawn by Valheim with the " + name + " shader");
+                ShaderName = name;
                 return m;
             }
 
@@ -247,6 +267,7 @@ namespace MineHeim
                 ? new Material(viking.sharedMaterial) { name = "MineHeim Steve" }
                 : new Material(Shader.Find("Sprites/Default") ?? Shader.Find("Hidden/Internal-Colored")) { name = "MineHeim Steve" };
             Plugin.Log.LogWarning("steve: no standard shader in this build, using " + fallback.shader.name);
+            ShaderName = fallback.shader.name + " (fallback)";
             return fallback;
         }
 
@@ -396,6 +417,7 @@ namespace MineHeim
                 HeadYaw = headYaw * Mathf.Deg2Rad,
                 Age = _age,
                 Crouch = player.IsCrouching() && !swimming,
+                Block = ShieldBlock.Up,
                 Sit = sitting,
                 Swim = swimming,
             };

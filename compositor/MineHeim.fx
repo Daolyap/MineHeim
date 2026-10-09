@@ -51,8 +51,9 @@ uniform float ContactRadius < ui_type = "drag"; ui_min = 0.1; ui_max = 3.0; ui_s
 uniform float BloomStrength < ui_type = "drag"; ui_min = 0.0; ui_max = 2.0; ui_step = 0.01; ui_label = "Minecraft glow";
 	ui_tooltip = "Bright Minecraft things (lava, fire, the portal) glow over Valheim's picture, as Valheim's own lights do."; > = 0.55;
 uniform float BloomThreshold < ui_type = "drag"; ui_min = 0.0; ui_max = 1.0; ui_step = 0.01; ui_label = "Glow threshold"; > = 0.62;
-// Set by the add-on: the camera shake, applied to the finished picture so Valheim and Minecraft shake together
-// (x, y: fraction of the screen height; z: roll, radians), and the nether portal's warp (0..1) while passing through.
+// Reserved, not set by the add-on (always 0): a picture-space camera shake (x, y: fraction of the screen height; z: roll,
+// radians) and a portal warp (0..1). Valheim's own camera shake already reaches Minecraft through the camera pose, and
+// Minecraft draws its own portal swirl into the overlay layer.
 uniform float3 Shake = float3(0.0, 0.0, 0.0);
 uniform float PortalWarp = 0.0;
 // the host's world around the camera: x = Nether heat (0..1, the air shimmers), y = the End (0..1, a cold violet dusk)

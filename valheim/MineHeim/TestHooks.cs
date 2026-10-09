@@ -171,6 +171,11 @@ namespace MineHeim
                         }
 
                         break;
+                    case "steve":
+                        Plugin.Log.LogInfo(string.Format(CultureInfo.InvariantCulture, "steve: avatar={0} shown={1} skin={2} shader={3} armSwings={4} shield={5}",
+                            SteveAvatar.Native ? "native" : "minecraft", SteveAvatar.Shown ? "yes" : "no", SteveAvatar.SkinSource, SteveAvatar.ShaderName,
+                            SteveAvatar.Swings, ShieldBlock.Up ? "up" : "down"));
+                        break;
                     case "status5":
                         Plugin.Log.LogInfo(string.Format(CultureInfo.InvariantCulture,
                             "status5: mcMode={0} vikingHidden={1} creativeBlocked={2} wardSaved={3} cursorVisible={4} cursorLock={5} health={6:0.0} stamina={7:0.0} swings={8} lagFrames={9:0.0} leadMs={10:0} predict={11} screen={12} x={13:0.00} z={14:0.00}",

@@ -15,7 +15,7 @@ namespace MineHeim
     {
         public const string PrismInstance = "MineHeim";
         private static bool _tried, _toldHidden;
-        private static float _startAt = -1f;
+        private static float _startAt = -1f, _startedAt = -100f;
 
         /// <summary>Where Install.cmd puts its Prism Launcher (portable): %LOCALAPPDATA%\MineHeim\PrismLauncher.</summary>
         public static string PrismExe => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MineHeim", "PrismLauncher", "prismlauncher.exe");
@@ -57,7 +57,26 @@ namespace MineHeim
             Start();
         }
 
-        private static void Start()
+        /// <summary>
+        /// The status key while Minecraft is not attached: start it again (it crashed, or was closed). Not twice within
+        /// a minute: Minecraft takes a while to load, and a second one would fight the first for the link.
+        /// </summary>
+        public static string StartAgain()
+        {
+            if (Link.Connected)
+            {
+                return "Minecraft is running";
+            }
+
+            if (Time.unscaledTime - _startedAt < 60f)
+            {
+                return "Minecraft is starting (give it a minute)";
+            }
+
+            return Start() ? "starting Minecraft..." : "cannot start Minecraft by itself: start it yourself (see BepInEx/LogOutput.log)";
+        }
+
+        private static bool Start()
         {
             string command = Plugin.LaunchCommand.Value.Trim();
             string exe, args;
@@ -85,17 +104,20 @@ namespace MineHeim
             else
             {
                 Plugin.Log.LogInfo("minecraft auto-start: no Prism Launcher from Install.cmd and no Minecraft.LaunchCommand; start Minecraft yourself");
-                return;
+                return false;
             }
 
             try
             {
                 Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" });
                 Plugin.Log.LogInfo("minecraft auto-start: " + exe + " " + args);
+                _startedAt = Time.unscaledTime;
+                return true;
             }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning("minecraft auto-start failed (" + exe + "): " + e.Message);
+                return false;
             }
         }
 

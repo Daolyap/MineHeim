@@ -64,7 +64,7 @@ namespace MineHeim
         internal static ConfigEntry<string> ItemPairs, MobBodyPrefab;
         internal static ConfigEntry<bool> MobsEnabled, MobsHunt, AutoStart, HideMinecraftWindow, QuitWithValheim;
         internal static ConfigEntry<string> LaunchCommand;
-        internal static ConfigEntry<KeyCode> GameModeKey;
+        internal static ConfigEntry<KeyCode> GameModeKey, StatusKey, AvatarKey;
         internal static ConfigEntry<float> WeaponDamageScale, MobRadius, WeaponPointDamage;
         internal static ConfigEntry<bool> CreativeInvulnerable, WardsBlockExplosions, PredictMotion;
         internal static ConfigEntry<bool> NetherEnabled, NetherAshGround, NetherWeather, NetherMapPin;
@@ -120,6 +120,11 @@ namespace MineHeim
                 "In Creative, while you are Steve (Minecraft mode on), the Viking takes no damage and uses no stamina, as in Minecraft's Creative.");
             StartInMinecraftMode = Config.Bind("Input", "StartInMinecraftMode", false, "Start every game in Minecraft mode.");
             GameModeKey = Config.Bind("Input", "GameModeKey", KeyCode.F8, "Switch Steve between Creative and Survival.");
+            StatusKey = Config.Bind("Input", "StatusKey", KeyCode.F10,
+                "Show MineHeim's status on screen: Minecraft attached or not, frame rate and Minecraft's delay, who draws Steve, the Nether and End portals near you. " +
+                "While Minecraft is not attached (it crashed, or you closed it) it also starts it again.");
+            AvatarKey = Config.Bind("Input", "AvatarKey", KeyCode.F11,
+                "Switch who draws Steve (Steve.Avatar): Valheim (no trailing when you run or turn) or Minecraft (with his held item and armour).");
             AutoStart = Config.Bind("Minecraft", "AutoStart", true,
                 "Start Minecraft when Valheim starts (if none is running): the MineHeim instance of the Prism Launcher that Install.cmd set up, or Minecraft.LaunchCommand.");
             LaunchCommand = Config.Bind("Minecraft", "LaunchCommand", "",

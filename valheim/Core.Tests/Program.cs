@@ -428,6 +428,8 @@ namespace MineHeim.Core.Tests
             Check(rot[(int)SteveModel.Part.Body * 3] == 0.5f && off[(int)SteveModel.Part.Head * 3 + 1] < -4f && rot[0] == 0.3f && rot[1] == -0.2f, "crouching and looking");
             SteveModel.Animate(new SteveModel.Input { WalkPosition = 0f, WalkAmount = 1f }, rot, off);
             Check(rot[(int)SteveModel.Part.RightLeg * 3] > 1.3f && rot[(int)SteveModel.Part.LeftLeg * 3] < -1.3f, "full stride: the legs swing apart");
+            SteveModel.Animate(new SteveModel.Input { Block = true }, rot, off);
+            Check(rot[(int)SteveModel.Part.LeftArm * 3] < -0.9f && rot[(int)SteveModel.Part.LeftArm * 3 + 1] > 0.5f, "shield up: the left arm is raised across the chest");
         }
 
         /// <summary>

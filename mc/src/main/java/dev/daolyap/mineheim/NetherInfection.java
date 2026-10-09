@@ -31,6 +31,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
@@ -72,6 +73,8 @@ public final class NetherInfection {
 		/** The End's dragon: spawned once, and its entity while it lives. */
 		boolean dragonSpawned;
 		UUID dragon;
+		/** Seconds the dragon could not be found though its portal's entities are loaded (it may still be loading). */
+		int dragonMissing;
 		/** Portal blocks that belong to it (the frame's inside); empty = the portal is gone and the land heals. */
 		final Set<Long> portal = new HashSet<>();
 		double cx, cz;
@@ -248,6 +251,13 @@ public final class NetherInfection {
 			}
 
 			boolean relit = !fresh && !in.lit();
+			if (relit) {
+				in.radius = Math.max(in.radius, 2);
+				if (in.dragon == null) {
+					in.dragonSpawned = false; // a portal lit again can call a new dragon
+				}
+			}
+
 			in.portal.add(key);
 			centre(in);
 			dirty = true;
@@ -371,6 +381,10 @@ public final class NetherInfection {
 			burn(s);
 		}
 
+		if (ticks % 200 == 100) {
+			sendHome(s.overworld());
+		}
+
 		if (infections.isEmpty() || WorldBridge.server() == null) {
 			if (ticks % 20 == 0) {
 				report();
@@ -400,7 +414,7 @@ public final class NetherInfection {
 				budget -= grow(level, i, budget);
 				spawnMobs(level, i);
 			} else {
-				i.radius -= healPerMinute / 1200.0;
+				i.radius = Math.max(0, i.radius - healPerMinute / 1200.0);
 				if (ticks % 10 == 0) {
 					heal(level, i);
 				}
@@ -890,18 +904,37 @@ public final class NetherInfection {
 			return;
 		}
 
+		BlockPos origin = BlockPos.containing(i.cx, i.cy + 1, i.cz);
 		if (i.dragon != null) {
 			Entity e = level.getEntity(i.dragon);
-			if (e == null && !level.isLoaded(BlockPos.containing(i.cx, i.cy, i.cz))) {
-				return; // far away: not loaded, not dead
+			if (e != null) {
+				i.dragonMissing = 0;
+				if (!e.isAlive()) {
+					MineHeim.LOG.info("nether infection {}: the Ender Dragon is dead, the End portal goes out", i.id);
+					i.dragon = null;
+					dirty = true;
+					closePortal(level, i);
+				} else if (!i.lit()) {
+					// the portal went out under it (a frame was broken): the End recedes, and its dragon with it
+					MineHeim.LOG.info("nether infection {}: the End portal is out, the Ender Dragon leaves", i.id);
+					e.discard();
+					i.dragon = null;
+					dirty = true;
+				}
+
+				return;
 			}
 
-			if (e == null || !e.isAlive()) {
-				MineHeim.LOG.info("nether infection {}: the Ender Dragon is dead, the End portal goes out", i.id);
-				i.dragon = null;
-				closePortal(level, i);
+			// not found: far away (not loaded), still loading after a restart, or gone without dying (a command)
+			if (!level.areEntitiesLoaded(ChunkPos.pack(origin)) || ++i.dragonMissing < 30) {
+				return;
 			}
 
+			MineHeim.LOG.info("nether infection {}: the Ender Dragon is gone (not killed)", i.id);
+			i.dragon = null;
+			i.dragonSpawned = false;
+			i.dragonMissing = 0;
+			dirty = true;
 			return;
 		}
 
@@ -909,20 +942,55 @@ public final class NetherInfection {
 			return;
 		}
 
-		EnderDragon dragon = EntityTypes.ENDER_DRAGON.create(level, EntitySpawnReason.EVENT);
+		// one that strayed (unloaded) and is back counts: never two
+		List<EnderDragon> strays = level.getEntitiesOfClass(EnderDragon.class, new AABB(origin).inflate(160), d -> d.isAlive() && d.entityTags().contains(MOB_TAG));
+		EnderDragon dragon = strays.isEmpty() ? EntityTypes.ENDER_DRAGON.create(level, EntitySpawnReason.EVENT) : strays.get(0);
 		if (dragon == null) {
 			return;
 		}
 
-		BlockPos origin = BlockPos.containing(i.cx, i.cy + 1, i.cz);
-		dragon.setFightOrigin(origin);
-		dragon.setPos(i.cx, i.cy + 40, i.cz);
-		dragon.addTag(MOB_TAG);
-		level.addFreshEntity(dragon);
+		if (strays.isEmpty()) {
+			dragon.setFightOrigin(origin);
+			dragon.setPos(i.cx, i.cy + 40, i.cz);
+			dragon.addTag(MOB_TAG);
+			level.addFreshEntity(dragon);
+		}
+
 		i.dragonSpawned = true;
 		i.dragon = dragon.getUUID();
 		dirty = true;
 		MineHeim.LOG.info("nether infection {}: the Ender Dragon has come", i.id);
+	}
+
+	/**
+	 * The infections' mobs belong to their land: once a mob is well outside every infection (its land healed, or it
+	 * wandered far off), it goes home. Not the dragon: it comes and goes with its portal. Server thread, every 10 s.
+	 */
+	private static void sendHome(final ServerLevel level) {
+		int sent = 0;
+		for (Entity e : toList(level.getAllEntities())) {
+			if (!(e instanceof Mob) || e instanceof EnderDragon || !e.entityTags().contains(MOB_TAG)) {
+				continue;
+			}
+
+			boolean home = false;
+			for (Infection i : infections) {
+				double dx = e.getX() - i.cx, dz = e.getZ() - i.cz;
+				if (Math.sqrt(dx * dx + dz * dz) <= i.radius + 32) {
+					home = true;
+					break;
+				}
+			}
+
+			if (!home) {
+				e.discard();
+				sent++;
+			}
+		}
+
+		if (sent > 0) {
+			MineHeim.LOG.info("nether infection: {} mob(s) left healed land", sent);
+		}
 	}
 
 	/** Every mob the infections spawned (test hook and "nether clear"). */
@@ -991,7 +1059,7 @@ public final class NetherInfection {
 					}
 
 					infections.clear();
-					for (Entity e : level.getAllEntities()) {
+					for (Entity e : toList(level.getAllEntities())) {
 						if (e.entityTags().contains(MOB_TAG)) {
 							e.discard();
 						}
@@ -1058,9 +1126,10 @@ public final class NetherInfection {
 					}
 				}
 				case "killdragon" -> {
-					for (Entity e : level.getAllEntities()) {
+					// a real death (as a player's last hit), so the portal goes out as it does in play
+					for (Entity e : toList(level.getAllEntities())) {
 						if (e instanceof EnderDragon && e.entityTags().contains(MOB_TAG)) {
-							e.discard();
+							e.kill(level);
 						}
 					}
 				}
@@ -1195,6 +1264,13 @@ public final class NetherInfection {
 			infections.add(i);
 			nextId = Math.max(nextId, i.id + 1);
 		}
+	}
+
+	/** A copy to walk while discarding (removing from the level's own list mid-walk is not safe). */
+	private static List<Entity> toList(final Iterable<Entity> entities) {
+		List<Entity> out = new ArrayList<>();
+		entities.forEach(out::add);
+		return out;
 	}
 
 	private static JsonArray longs(final Set<Long> values) {
