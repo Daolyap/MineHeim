@@ -141,6 +141,7 @@ public final class ClientInput {
 				// Minecraft mode in the host: Steve, his hand and Minecraft's HUD show; off, the host's own player is back
 				boolean on = m.get("on").getAsBoolean();
 				HostView.steve = on;
+				HostView.steveBody = !m.has("body") || m.get("body").getAsBoolean();
 				if (minecraft.gui.hud.isHidden() == on) {
 					minecraft.gui.hud.toggle();
 				}

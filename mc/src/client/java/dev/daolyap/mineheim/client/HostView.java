@@ -10,7 +10,8 @@ import net.minecraft.world.level.block.Blocks;
 /**
  * What the host's player sees of this world besides the camera:
  * <ul>
- * <li>Steve: drawn (with his hand and Minecraft's HUD) only while the host is in Minecraft mode ({"t":"steve","on":bool}).</li>
+ * <li>Steve: drawn (with his hand and Minecraft's HUD) only while the host is in Minecraft mode ({"t":"steve","on":bool}); his body
+ * not at all when the host draws it itself ("body":false).</li>
  * <li>The host's exact ground ({"t":"heights","c":[x,z,cm,...]}): the barrier ground is whole blocks, up to 1 m under the host's
  * real surface, so mobs and items standing on it are drawn standing on the real surface instead.</li>
  * <li>The host process: when it is gone without saying goodbye (a crash, Task Manager), Minecraft saves and quits too.</li>
@@ -19,6 +20,10 @@ import net.minecraft.world.level.block.Blocks;
 public final class HostView {
 	/** Steve is shown (Minecraft mode on in the host). */
 	public static volatile boolean steve = true;
+	/** Steve's body is drawn here (false: the host draws it itself, in the same frame as its own player). */
+	public static volatile boolean steveBody = true;
+	/** Dress Steve in the account's own skin instead of classic Steve (the host's Steve.Skin = Account). */
+	public static volatile boolean ownSkin = false;
 	/** Host surface per column (key x,z), Minecraft y in centimetres. */
 	private static final ConcurrentHashMap<Long, Integer> HEIGHTS = new ConcurrentHashMap<>();
 	private static volatile long watchedHost = -1;

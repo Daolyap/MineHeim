@@ -37,7 +37,9 @@ import org.java_websocket.server.WebSocketServer;
  * <li>{"t":"creatures","c":[[id,name,x,y,z,width,height],...]}: the host's creatures near its player (they stand here as CreatureProxy)</li>
  * <li>{"t":"mhit","id":mob,"amount":hp,"by":creature id,"player":bool}: the host hurt one of the mobs; {"t":"mobfight","on":bool}</li>
  * <li>{"t":"vstats","hp":0..1,"food":0..20}: the host's player's health and food, for Survival's hearts and hunger bar</li>
- * <li>{"t":"steve","on":bool}: Minecraft mode in the host (Steve, his hand and the HUD show); {"t":"interact"}: the host's "use" on a container</li>
+ * <li>{"t":"steve","on":bool,"body":bool}: Minecraft mode in the host (Steve, his hand and the HUD show; body false: the host draws Steve's
+ * body itself); {"t":"interact"}: the host's "use" on a container</li>
+ * <li>{"t":"skinreq","mode":"steve|account"}: send the skin the host should dress its own Steve in (SkinSender)</li>
  * <li>{"t":"heights","c":[x,z,cm,...]}: the host's exact ground per column (mobs and items are drawn standing on it)</li>
  * <li>{"t":"window","hidden":bool,"host":pid,"quitWithHost":bool}: park the window; follow the host process</li>
  * <li>{"t":"nethercfg","on":bool,"max":blocks,"grow":blocks/min,"heal":blocks/min,"mobs":cap,"every":s}: the Nether infection's settings;
@@ -49,6 +51,7 @@ import org.java_websocket.server.WebSocketServer;
  * {"t":"mclights","set":[x,y,z,level,...],"clear":[x,y,z,...]}, {"t":"itemout","id":entity,"item":id,"n":count,"pos":[x,y,z]},
  * {"t":"itemtaken","id":entity,"item":id,"n":count,"pos":[x,y,z]}, {"t":"query",...},
  * {"t":"mobs","m":[[id,type,x,y,z,width,height,health,maxHealth,hostile],...]}, {"t":"chit","id":creature,"amount":hp,"src":mob,"by":mob id,"ranged":bool,"pos":[x,y,z]},
+ * {"t":"skin","png":base64,"slim":bool,"src":"steve|account"}, {"t":"armswing","off":bool},
  * {"t":"infect","l":[[id,x,y,z,radius,lit,columns,cells,waiting],...],"mobs":n}: the Nether infections (once a second when changed).
  */
 public final class HostLink extends WebSocketServer {
@@ -130,6 +133,7 @@ public final class HostLink extends WebSocketServer {
 				case "mhit" -> Creatures.hitMob(m.get("id").getAsInt(), m.get("amount").getAsFloat(), m.has("by") ? m.get("by").getAsInt() : -1,
 					m.has("player") && m.get("player").getAsBoolean());
 				case "mobfight" -> Creatures.fight = m.get("on").getAsBoolean();
+				case "skinreq" -> SkinSender.request(m.has("mode") ? m.get("mode").getAsString() : "steve");
 				case "vstats" -> MineHeimClient.vikingStats(m.get("hp").getAsFloat(), m.get("food").getAsInt());
 				case "projhit" -> {
 					JsonArray at = m.getAsJsonArray("pos");

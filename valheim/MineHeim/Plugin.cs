@@ -38,6 +38,24 @@ namespace MineHeim
             Creative,
             Survival,
         }
+
+        internal enum AvatarMode
+        {
+            Native,
+            Minecraft,
+        }
+
+        internal enum SkinChoice
+        {
+            Steve,
+            Account,
+            File,
+        }
+
+        internal static ConfigEntry<AvatarMode> SteveAvatarMode;
+        internal static ConfigEntry<SkinChoice> SteveSkin;
+        internal static ConfigEntry<string> SteveSkinFile;
+        internal static ConfigEntry<bool> SteveSkinSlim;
         internal static ConfigEntry<bool> GroundEnabled;
         internal static ConfigEntry<int> GroundRadius, GroundPerFrame, MaxColliders;
         internal static ConfigEntry<bool> BuildingsEnabled, ItemsCross, CreativeToValheim, TimeSync, FireLights, MinecraftLamps;
@@ -85,6 +103,19 @@ namespace MineHeim
                 "go to Minecraft (break, place, pick, hotbar). Off, you are the Viking again: Valheim's own body, hotbar and controls (Minecraft's blocks, mobs and items stay in the world).");
             HideViking = Config.Bind("Steve", "HideViking", true,
                 "In Minecraft mode, hide the Viking's body (not his held items or lights): Steve stands where he stands.");
+            SteveAvatarMode = Config.Bind("Steve", "Avatar", AvatarMode.Native,
+                "Who draws Steve. Native: Valheim, on the Viking in the same frame, so he never trails behind or doubles up when you run or turn " +
+                "(no held item or armour on him yet). Minecraft: Minecraft's own picture of him, with his held item and armour, a frame or two late.");
+            SteveSkin = Config.Bind("Steve", "Skin", SkinChoice.Steve,
+                "Steve's skin. Steve: classic Steve. Account: the skin of the Minecraft account you play on (fetched from Mojang when Minecraft starts). " +
+                "File: a skin PNG of your own (Steve.SkinFile).");
+            SteveSkinFile = Config.Bind("Steve", "SkinFile", "",
+                "With Skin = File: the path of a Minecraft skin PNG (64x64 or old 64x32), e.g. C:/Users/you/Downloads/skin.png. Write paths with /.");
+            SteveSkinSlim = Config.Bind("Steve", "SkinSlimArms", false, "With Skin = File: the skin is for the slim (3-pixel) arms model (\"Alex\").");
+            SteveAvatarMode.SettingChanged += (_, __) => InputBridge.SendSteve();
+            SteveSkin.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
+            SteveSkinFile.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
+            SteveSkinSlim.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
             CreativeInvulnerable = Config.Bind("Steve", "CreativeInvulnerable", true,
                 "In Creative, while you are Steve (Minecraft mode on), the Viking takes no damage and uses no stamina, as in Minecraft's Creative.");
             StartInMinecraftMode = Config.Bind("Input", "StartInMinecraftMode", false, "Start every game in Minecraft mode.");
@@ -231,6 +262,7 @@ namespace MineHeim
             RequestBlockSync();
             SendGameMode();
             InputBridge.SendSteve();
+            SteveAvatar.RequestSkin();
             Link.Send("{\"t\":\"mobfight\",\"on\":" + (MobsHunt.Value ? "true" : "false") + "}");
         }
 

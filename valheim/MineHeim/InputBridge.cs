@@ -64,10 +64,13 @@ namespace MineHeim
             Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, on ? "Minecraft mode on: you are Steve" : "Minecraft mode off: you are the Viking");
         }
 
-        /// <summary>Minecraft shows Steve and its hotbar only in Minecraft mode (sent on every change and every new connection).</summary>
+        /// <summary>
+        /// Minecraft shows Steve and its hotbar only in Minecraft mode (sent on every change and every new connection); his
+        /// body not at all when Valheim draws him (Steve.Avatar = Native).
+        /// </summary>
         public static void SendSteve()
         {
-            Link.Send("{\"t\":\"steve\",\"on\":" + (McMode ? "true" : "false") + "}");
+            Link.Send("{\"t\":\"steve\",\"on\":" + (McMode ? "true" : "false") + ",\"body\":" + (SteveAvatar.Native ? "false" : "true") + "}");
         }
 
         /// <summary>Every frame, main thread.</summary>

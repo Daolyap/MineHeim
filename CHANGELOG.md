@@ -2,6 +2,12 @@
 
 ## 1.0.0 (in progress, branch `v1/nether-infection`)
 
+- **Steve no longer trails or doubles up when you run or turn.** Valheim now draws Steve itself, on the Viking in the same frame,
+  instead of using Minecraft's picture of him (which arrives a frame or two late). He walks, crouches, sits, turns his head and
+  swings his arm when Minecraft does. For now he carries no held item or armour; `Steve.Avatar = Minecraft` brings back the old way.
+- **Skins:** `Steve.Skin` = Steve (classic, the default), Account (your Minecraft account's own skin, slim arms included) or File
+  (any skin PNG, `Steve.SkinFile`).
+
 - **The Nether comes to Valheim.** Light a Nether portal in Minecraft (an obsidian frame and flint and steel; in Survival, throw
   Valheim's Obsidian, Flint and Iron across for them) and nobody goes through it: instead the land around it turns to Nether. Minecraft lays a crust of netherrack, crimson and warped nylium, soul soil, magma
   and Nether ores over Valheim's ground, with fire, roots and fungi on top, spreading out from the portal (8 m a minute, up to 48 m).

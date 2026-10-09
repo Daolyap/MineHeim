@@ -52,6 +52,13 @@ an effect composites it:
 3. **Relighting.** Minecraft's colours are tinted with Valheim's scene light and haze so the blocks sit in the same weather.
 4. **Overlay** on top: Minecraft's hand, hotbar and any open screen.
 
+Re-projection puts the still world right, but not something that moves with the camera: Steve in Minecraft's picture stood where
+the Viking was a frame or two ago and trailed or doubled whenever the Viking ran or turned. So Valheim draws Steve itself
+(`Steve.Avatar = Native`, `SteveAvatar.cs`): Minecraft's player model, built from the skin Minecraft sends (`SkinSender`), put on the
+Viking's position and facing in `Camera.onPreCull` of the very frame being drawn, animated from the Viking's own movement (walk,
+crouch, sitting, head turns) and Minecraft's arm swings (`{"t":"armswing"}`). Minecraft leaves his body out of its picture. The skin's
+outer layer (hat, jacket, sleeves) is built from its opaque pixels only, one small square each, so a plain opaque material draws it.
+
 ## 3. One ground, both ways
 
 **Valheim to Minecraft.** Minecraft's world is a void. The plugin probes Valheim's terrain with downward raycasts (160 columns a frame

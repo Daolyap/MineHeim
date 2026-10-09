@@ -42,11 +42,16 @@ namespace MineHeim
         private const int PillarHeight = 3;
         private StreamWriter _projLog;
 
-        private void OnEnable() => Camera.onPreRender += HandlePreRender;
+        private void OnEnable()
+        {
+            Camera.onPreRender += HandlePreRender;
+            SteveAvatar.Enable();
+        }
 
         private void OnDisable()
         {
             Camera.onPreRender -= HandlePreRender;
+            SteveAvatar.Disable();
             _projLog?.Dispose();
             _projLog = null;
         }
@@ -130,6 +135,12 @@ namespace MineHeim
                 case "screen":
                     ScreenBridge.OnScreen(message);
                     return;
+                case "skin":
+                    SteveAvatar.OnSkin(message);
+                    return;
+                case "armswing":
+                    SteveAvatar.OnArmSwing();
+                    return;
                 case "infect":
                     Plugin.Nether.OnInfect(message);
                     return;
@@ -177,9 +188,10 @@ namespace MineHeim
                 {
                     float offset = MotionPrediction.TakeOffset();
                     Plugin.Log.LogInfo(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        "perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}, minecraft {5:0.0} frame(s) behind, steve lead {6:0} ms, steve offset {7}",
+                        "perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}, minecraft {5:0.0} frame(s) behind, steve lead {6:0} ms, steve offset {7}, steve drawn by {8}",
                         _perfFrames / (Time.unscaledTime - _perfStart), _frame - _perfCamStart, Link.Connected ? "up" : "down", _viewW, _viewH,
-                        MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, offset < 0f ? "n/a" : (offset * 100f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " cm"));
+                        MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, offset < 0f ? "n/a" : (offset * 100f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " cm",
+                        SteveAvatar.Native ? "valheim (skin: " + SteveAvatar.SkinSource + ")" : "minecraft"));
                 }
 
                 _perfStart = Time.unscaledTime;

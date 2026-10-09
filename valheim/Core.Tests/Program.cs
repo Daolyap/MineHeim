@@ -25,6 +25,10 @@ namespace MineHeim.Core.Tests
             BarrierCellsCountOwners();
             ItemMapPairs();
             CreatureAndMobMessages();
+            SteveModelFacesOutward();
+            SteveModelSeamsMatchTheSkinLayout();
+            SteveModelOuterLayerPerPixel();
+            SteveAnimation();
             Console.WriteLine(_failures == 0 ? "ALL PASS" : _failures + " FAILURE(S)");
             return _failures == 0 ? 0 : 1;
         }
@@ -293,6 +297,133 @@ namespace MineHeim.Core.Tests
                 "a new pair with a ratio both ways");
             Check(problems.Count == 2, "bad entries are reported: " + string.Join(" | ", problems));
             Check(new ItemMap().Count >= 40, "the default table has every pair: " + new ItemMap().Count);
+        }
+
+        // ------------------------------------------------------------------ Steve's model (the host draws him itself)
+
+        private static float[] V(SteveModel.Mesh m, int vertex)
+        {
+            return new[] { m.Positions[vertex * 3], m.Positions[vertex * 3 + 1], m.Positions[vertex * 3 + 2] };
+        }
+
+        private static bool Same(float[] a, float[] b)
+        {
+            return Math.Abs(a[0] - b[0]) < 1e-4 && Math.Abs(a[1] - b[1]) < 1e-4 && Math.Abs(a[2] - b[2]) < 1e-4;
+        }
+
+        /// <summary>Every triangle of every part winds clockwise seen from outside (Unity's front faces): its normal points away from the box.</summary>
+        private static void SteveModelFacesOutward()
+        {
+            foreach (bool slim in new[] { false, true })
+            {
+                for (int p = 0; p < SteveModel.PartCount; p++)
+                {
+                    var m = SteveModel.Build((SteveModel.Part)p, slim, 64, 64);
+                    // the base box comes first: 6 faces, 4 vertices each; its centre is the mean of its 24 vertices
+                    double cx = 0, cy = 0, cz = 0;
+                    for (int v = 0; v < 24; v++)
+                    {
+                        var q = V(m, v);
+                        cx += q[0] / 24;
+                        cy += q[1] / 24;
+                        cz += q[2] / 24;
+                    }
+
+                    Check(m.VertexCount == 48 && m.Triangles.Count == 72, "part " + p + ": two whole boxes, got " + m.VertexCount + " vertices");
+                    int inward = 0;
+                    for (int t = 0; t < 12 * 3; t += 3)
+                    {
+                        var a = V(m, m.Triangles[t]);
+                        var b = V(m, m.Triangles[t + 1]);
+                        var c = V(m, m.Triangles[t + 2]);
+                        double ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+                        double nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+                        double mx = (a[0] + b[0] + c[0]) / 3 - cx, my = (a[1] + b[1] + c[1]) / 3 - cy, mz = (a[2] + b[2] + c[2]) / 3 - cz;
+                        if (nx * mx + ny * my + nz * mz <= 0)
+                        {
+                            inward++;
+                        }
+                    }
+
+                    Check(inward == 0, "part " + p + (slim ? " (slim)" : "") + ": " + inward + " triangle(s) face inward");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Minecraft's unwrap: in the skin, the right side's right edge meets the front's left edge, the front's right edge the
+        /// left side's left edge, the left side's right edge the back's left edge, and the top's bottom edge the front's top.
+        /// The model's matching corners must be the same points. Face order: front, right, left, back, top, bottom;
+        /// corners: top-left, top-right, bottom-right, bottom-left (texture).
+        /// </summary>
+        private static void SteveModelSeamsMatchTheSkinLayout()
+        {
+            var m = SteveModel.Build(SteveModel.Part.Head, false, 64, 64);
+            int Face(int f, int corner) => f * 4 + corner;
+            const int front = 0, right = 1, left = 2, back = 3, top = 4;
+            Check(Same(V(m, Face(right, 1)), V(m, Face(front, 0))) && Same(V(m, Face(right, 2)), V(m, Face(front, 3))), "right side meets the front");
+            Check(Same(V(m, Face(front, 1)), V(m, Face(left, 0))) && Same(V(m, Face(front, 2)), V(m, Face(left, 3))), "front meets the left side");
+            Check(Same(V(m, Face(left, 1)), V(m, Face(back, 0))) && Same(V(m, Face(left, 2)), V(m, Face(back, 3))), "left side meets the back");
+            Check(Same(V(m, Face(top, 3)), V(m, Face(front, 0))) && Same(V(m, Face(top, 2)), V(m, Face(front, 1))), "top meets the front");
+            // the face (skin 8..16 x 8..16) is on the front (+z), the character's right (texture left) at +x
+            var tl = V(m, Face(front, 0));
+            Check(tl[0] == 4 && tl[1] == 8 && tl[2] == 4, "head front top-left corner: " + string.Join(",", tl));
+            Check(Math.Abs(m.Uvs[0] - 8 / 64f) < 1e-6 && Math.Abs(m.Uvs[1] - (1 - 8 / 64f)) < 1e-6, "head front uv starts at skin (8, 8)");
+            // a right arm hangs at +x, its outer side (skin 40..44 x 20..32) facing +x
+            float px, py, pz;
+            SteveModel.Pivot(SteveModel.Part.RightArm, false, out px, out py, out pz);
+            var arm = SteveModel.Build(SteveModel.Part.RightArm, false, 64, 64);
+            Check(px > 0 && V(arm, Face(right, 0))[0] == 3 && Math.Abs(arm.Uvs[right * 8] - 40 / 64f) < 1e-6, "right arm: at +x, outer side textured from (40, 20)");
+            // an old 64x32 skin: only the hat as an outer layer, the left limbs borrow the right limbs' pixels
+            var oldLeg = SteveModel.Build(SteveModel.Part.LeftLeg, false, 64, 32);
+            Check(oldLeg.VertexCount == 24 && Math.Abs(oldLeg.Uvs[1] - (1 - 20 / 32f)) < 1e-6, "64x32 skin: left leg is one box textured from the right leg's");
+        }
+
+        private static void SteveModelOuterLayerPerPixel()
+        {
+            // only the hat's front top-left pixel (skin 40, 8) is there: one square, at the front's top corner on the right (+x)
+            var m = SteveModel.Build(SteveModel.Part.Head, false, 64, 64, (x, y) => x == 40 && y == 8);
+            Check(m.VertexCount == 24 + 4, "one opaque hat pixel gives one square, got " + (m.VertexCount - 24) + " vertices");
+            var c = V(m, 24);
+            Check(Math.Abs(c[0] - 4.5) < 1e-4 && Math.Abs(c[1] - 8.5) < 1e-4 && Math.Abs(c[2] - 4.5) < 1e-4, "hat pixel corner: " + string.Join(",", c));
+            var none = SteveModel.Build(SteveModel.Part.Body, false, 64, 64, (x, y) => false);
+            Check(none.VertexCount == 24, "a transparent jacket adds nothing");
+            byte[] skin = SteveModel.PlaceholderSkin();
+            Check(skin.Length == 64 * 64 * 4 && skin[((63 - 8) * 64 + 8) * 4 + 3] == 255, "placeholder skin is 64x64 with an opaque face");
+        }
+
+        private static void SteveAnimation()
+        {
+            var walk = new SteveModel.WalkCycle();
+            for (int i = 0; i < 120; i++)
+            {
+                walk.Step(4.3f, 1f / 60f);
+            }
+
+            Check(Math.Abs(walk.Amount - 0.86f) < 0.01f && walk.Position > 20f, "walking at 4.3 m/s: stride " + walk.Amount + ", position " + walk.Position);
+            for (int i = 0; i < 120; i++)
+            {
+                walk.Step(0f, 1f / 60f);
+            }
+
+            Check(walk.Amount < 0.01f, "standing still: the stride dies away, got " + walk.Amount);
+
+            var swing = new SteveModel.Swing();
+            Check(swing.Progress < 0f, "no swing yet");
+            swing.Start();
+            swing.Step(0.15f);
+            Check(Math.Abs(swing.Progress - 0.5f) < 1e-4, "half way after 3 ticks: " + swing.Progress);
+            swing.Step(0.16f);
+            Check(swing.Progress < 0f, "the swing ends after 6 ticks");
+
+            var rot = new float[SteveModel.PartCount * 3];
+            var off = new float[SteveModel.PartCount * 3];
+            SteveModel.Animate(new SteveModel.Input { Attack = 0.4f }, rot, off);
+            Check(rot[(int)SteveModel.Part.RightArm * 3] < -0.9f, "mid-swing the right arm is raised forward: " + rot[(int)SteveModel.Part.RightArm * 3]);
+            SteveModel.Animate(new SteveModel.Input { Crouch = true, HeadPitch = 0.3f, HeadYaw = -0.2f }, rot, off);
+            Check(rot[(int)SteveModel.Part.Body * 3] == 0.5f && off[(int)SteveModel.Part.Head * 3 + 1] < -4f && rot[0] == 0.3f && rot[1] == -0.2f, "crouching and looking");
+            SteveModel.Animate(new SteveModel.Input { WalkPosition = 0f, WalkAmount = 1f }, rot, off);
+            Check(rot[(int)SteveModel.Part.RightLeg * 3] > 1.3f && rot[(int)SteveModel.Part.LeftLeg * 3] < -1.3f, "full stride: the legs swing apart");
         }
 
         /// <summary>

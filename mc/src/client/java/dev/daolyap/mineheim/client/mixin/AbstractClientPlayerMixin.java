@@ -1,6 +1,7 @@
 package dev.daolyap.mineheim.client.mixin;
 
 import dev.daolyap.mineheim.MineHeim;
+import dev.daolyap.mineheim.client.HostView;
 import java.util.UUID;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.resources.DefaultPlayerSkin;
@@ -10,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** While a host is attached the player is classic Steve (the wide-armed default skin), whatever the account's skin. */
+/** While a host is attached the player is classic Steve (the wide-armed default skin), unless the host asked for the account's own skin. */
 @Mixin(AbstractClientPlayer.class)
 abstract class AbstractClientPlayerMixin {
 	/** DefaultPlayerSkin picks floorMod(uuid.hashCode(), 18); index 15 is entity/player/wide/steve. */
@@ -18,7 +19,7 @@ abstract class AbstractClientPlayerMixin {
 
 	@Inject(method = "getSkin", at = @At("HEAD"), cancellable = true)
 	private void mineheim$steve(final CallbackInfoReturnable<PlayerSkin> cir) {
-		if (MineHeim.active && !Boolean.getBoolean("mineheim.ownSkin")) {
+		if (MineHeim.active && !HostView.ownSkin && !Boolean.getBoolean("mineheim.ownSkin")) {
 			cir.setReturnValue(DefaultPlayerSkin.get(CLASSIC_STEVE));
 		}
 	}

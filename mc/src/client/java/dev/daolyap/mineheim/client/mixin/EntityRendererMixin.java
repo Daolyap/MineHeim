@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * While a host is attached: Steve is drawn only in the host's Minecraft mode, and mobs and items resting on the host's
+ * While a host is attached: Steve is drawn only in the host's Minecraft mode (and not at all when the host draws him), and mobs and items resting on the host's
  * (whole-block) barrier ground are drawn standing on the host's real surface instead of up to a block inside it.
  */
 @Mixin(EntityRenderer.class)
@@ -22,7 +22,7 @@ abstract class EntityRendererMixin {
 	@Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
 	private void mineheim$steveOnlyInMinecraftMode(final Entity entity, final Frustum frustum, final double x, final double y, final double z,
 		final float partialTicks, final CallbackInfoReturnable<Boolean> cir) {
-		if (MineHeim.active && !HostView.steve && entity == Minecraft.getInstance().player) {
+		if (MineHeim.active && (!HostView.steve || !HostView.steveBody) && entity == Minecraft.getInstance().player) {
 			cir.setReturnValue(false);
 		}
 	}
