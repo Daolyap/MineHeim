@@ -51,7 +51,7 @@ import org.java_websocket.server.WebSocketServer;
  * {"t":"mclights","set":[x,y,z,level,...],"clear":[x,y,z,...]}, {"t":"itemout","id":entity,"item":id,"n":count,"pos":[x,y,z]},
  * {"t":"itemtaken","id":entity,"item":id,"n":count,"pos":[x,y,z]}, {"t":"query",...},
  * {"t":"mobs","m":[[id,type,x,y,z,width,height,health,maxHealth,hostile],...]}, {"t":"chit","id":creature,"amount":hp,"src":mob,"by":mob id,"ranged":bool,"pos":[x,y,z]},
- * {"t":"skin","png":base64,"slim":bool,"src":"steve|account"}, {"t":"armswing","off":bool},
+ * {"t":"skin","png":base64,"slim":bool,"src":"steve|account"}, {"t":"armswing","off":bool}, {"t":"ate","item":id,"n":nutrition},
  * {"t":"audio","music":0-1,"master":0-1}: Minecraft's music and master volume (the host's Audio.* config),
  * {"t":"infect","l":[[id,x,y,z,radius,lit,columns,cells,waiting],...],"mobs":n}: the Nether infections (once a second when changed).
  */

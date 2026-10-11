@@ -110,6 +110,9 @@ namespace MineHeim
                 case "hurt":
                     OnHurt(json);
                     return true;
+                case "ate":
+                    FoodBridge.OnAte(json);
+                    return true;
             }
 
             return false;

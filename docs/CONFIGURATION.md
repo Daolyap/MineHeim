@@ -54,7 +54,7 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Mobs.BodyPrefab` | Deer | the invisible Valheim creature a Minecraft mob's body is made from |
 | **Items** | | |
 | `Items.Cross` | on | thrown items cross into the other world when they have a twin |
-| `Items.CreativeToValheim` | off | let Creative's free items cross into Valheim too |
+| `Items.CreativeToValheim` | off | let Creative's free items cross into Valheim too (and Creative food feed the Viking). In Survival, food Steve eats always feeds the Viking: cooked and prepared Minecraft foods as their Valheim twins (cooked beef = cooked deer meat, bread = bread, golden apple = a top meal); raw meat and rotten or poisonous food feed nothing |
 | `Items.ExtraPairs` | empty | your own pairs: `ValheimPrefab=minecraft_item` or `...=item*ratio`, comma-separated, e.g. `Tin=iron_nugget*2, Wood=spruce_log` |
 | **Buildings** | | |
 | `Buildings.Enabled` | on | Valheim's buildings become Minecraft collision |

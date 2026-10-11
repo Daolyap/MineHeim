@@ -31,6 +31,7 @@ namespace MineHeim.Core.Tests
             SteveAnimation();
             SteveWeaponsBorrowValheimStats();
             SteveWeaponBalance();
+            SteveFoodIsValheimFood();
             Console.WriteLine(_failures == 0 ? "ALL PASS" : _failures + " FAILURE(S)");
             return _failures == 0 ? 0 : 1;
         }
@@ -117,6 +118,24 @@ namespace MineHeim.Core.Tests
             Check(WeaponMap.StaminaCost(stamina, 1) < WeaponMap.StaminaCost(stamina, 0) && Math.Abs(WeaponMap.StaminaCost(stamina, 1) - stamina * 0.67) < 1e-9, "skill lowers stamina as Valheim's");
             // several targets: Valheim's own share
             Check(WeaponMap.Split(1, true) == 1 && Math.Abs(WeaponMap.Split(2, true) - 1 / 1.5) < 1e-9 && WeaponMap.Split(3, false) == 1, "multi-hit share");
+        }
+
+        private static void SteveFoodIsValheimFood()
+        {
+            Func<string, bool> all = p => true;
+            Check(FoodMap.Resolve("bread", all) == "Bread" && FoodMap.Resolve("minecraft:cooked_beef", all) == "CookedDeerMeat", "cooked food = its Valheim twin");
+            foreach (string bad in new[] { "beef", "porkchop", "chicken", "cod", "rotten_flesh", "spider_eye", "poisonous_potato", "pufferfish", "cobblestone", "" })
+            {
+                Check(FoodMap.Candidates(bad).Length == 0 && FoodMap.Resolve(bad, all) == "", "feeds nothing: '" + bad + "'");
+            }
+
+            // a food the game lacks: the next one on its list
+            Check(FoodMap.Resolve("golden_apple", p => p == "LoxPie") == "LoxPie" && FoodMap.Resolve("golden_apple", p => false) == "", "fallback down the list");
+            // every Minecraft food that feeds anything has at least one Meadows-to-Plains fallback that is surely in the game
+            foreach (string food in new[] { "sweet_berries", "cooked_porkchop", "mushroom_stew", "beetroot_soup", "bread", "golden_carrot", "enchanted_golden_apple" })
+            {
+                Check(FoodMap.Candidates(food).Length > 0, "has a Valheim food: " + food);
+            }
         }
 
         /// <summary>Damage (in full hits) of clicking at `rate` for `seconds`, with Minecraft's recharge and Valheim's stamina.</summary>

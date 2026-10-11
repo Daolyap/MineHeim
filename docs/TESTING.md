@@ -38,3 +38,8 @@ L6, and B, F, M, I, W, N, E, P (not reached).
 | D9 | Bow at full draw vs. a quick tap | The full draw hurts far more; Bows skill rises on hits |
 | D10 | Fire Aspect / Smite sword on a Draugr or Skeleton (if you can get one: Creative inventory) | Fire sets it burning; Smite hurts undead much more |
 | D11 | Set `Events.SteveWeaponStats = false` | The old damage comes back |
+| E1 | Survival, F7 on, with an empty food slot: eat cooked beef (or bread) as Steve | The Viking gets Cooked deer meat (Bread) in a food slot: its icon, more max health and stamina; `LogOutput.log`: `steve ate ...: the Viking ate ...` |
+| E2 | Eat the same food again while it is still in a slot | Nothing eaten in Valheim, the item is back in Steve's inventory |
+| E3 | Fill all three slots | Minecraft's hunger bar is full and Steve cannot start eating (like Valheim) |
+| E4 | Eat raw beef or rotten flesh | Nothing in Valheim (the item is gone, as in Minecraft) |
+| E5 | Creative: eat something | A message: Creative food stays in Minecraft; no Valheim food |
