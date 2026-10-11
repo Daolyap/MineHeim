@@ -33,6 +33,7 @@ namespace MineHeim.Core.Tests
             SteveWeaponBalance();
             SteveFoodIsValheimFood();
             HerobrineEyes();
+            HeldItemsAndArmour();
             Console.WriteLine(_failures == 0 ? "ALL PASS" : _failures + " FAILURE(S)");
             return _failures == 0 ? 0 : 1;
         }
@@ -119,6 +120,66 @@ namespace MineHeim.Core.Tests
             Check(WeaponMap.StaminaCost(stamina, 1) < WeaponMap.StaminaCost(stamina, 0) && Math.Abs(WeaponMap.StaminaCost(stamina, 1) - stamina * 0.67) < 1e-9, "skill lowers stamina as Valheim's");
             // several targets: Valheim's own share
             Check(WeaponMap.Split(1, true) == 1 && Math.Abs(WeaponMap.Split(2, true) - 1 / 1.5) < 1e-9 && WeaponMap.Split(3, false) == 1, "multi-hit share");
+        }
+
+        private static void HeldItemsAndArmour()
+        {
+            // Minecraft's arm space -> Steve's: down the arm (Minecraft +y) is Steve's -y; blocks to pixels
+            float sx, sy, sz;
+            HeldItemMesh.ToSteve(0.0625f, 0.625f, -0.5f, false, true, out sx, out sy, out sz);
+            Check(Math.Abs(sx + 1) < 1e-5 && Math.Abs(sy + 10) < 1e-5 && Math.Abs(sz - 8) < 1e-5, "arm space: " + sx + "," + sy + "," + sz);
+            HeldItemMesh.ToSteve(0f, 0f, 0f, true, true, out sx, out sy, out sz);
+            float lx, ly, lz;
+            HeldItemMesh.ToSteve(0f, 0f, 0f, true, false, out lx, out ly, out lz);
+            Check(Math.Abs(sx + 0.5f) < 1e-5 && Math.Abs(lx - 0.5f) < 1e-5, "slim arms: the item half a pixel further in");
+
+            // one quad over a 4x4 texture, corners A(0,0) B(1,0) C(1,1) D(0,1) in uv, a unit square in space
+            float[] xyz = { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 };
+            float[] uv = { 0, 0, 1, 0, 1, 1, 0, 1 };
+            SteveModel.Mesh whole = HeldItemMesh.Build(xyz, uv, 4, 4, (x, y) => true, false, true);
+            Check(whole.VertexCount == 4 && whole.Triangles.Count == 6, "an opaque quad stays one quad");
+            Check(whole.Triangles[1] == 2 && whole.Triangles[2] == 1, "winding reversed for Unity (the axes mirror)");
+            Check(Math.Abs(whole.Uvs[1] - 1) < 1e-5 && Math.Abs(whole.Uvs[5]) < 1e-5, "uv v flipped to Unity's");
+
+            // three opaque pixels of 16: three small squares, each inside its own pixel's part of the quad
+            Func<int, int, bool> three = (x, y) => (x == 0 && y == 0) || (x == 3 && y == 0) || (x == 2 && y == 3);
+            SteveModel.Mesh cut = HeldItemMesh.Build(xyz, uv, 4, 4, three, false, true);
+            Check(cut.VertexCount == 12 && cut.Triangles.Count == 18, "cut out: one square per opaque pixel (" + cut.VertexCount + " vertices)");
+            bool inside = true;
+            for (int v = 0; v < cut.VertexCount; v++)
+            {
+                float px = -cut.Positions[v * 3], py = -cut.Positions[v * 3 + 1];
+                float u = cut.Uvs[v * 2] * 4f, tv = (1f - cut.Uvs[v * 2 + 1]) * 4f;
+                inside &= Math.Abs(px / 16f * 4f - u) < 1e-3 && Math.Abs(py / 16f * 4f - tv) < 1e-3;
+            }
+
+            Check(inside, "each square's texture is its own pixel's");
+            SteveModel.Mesh none = HeldItemMesh.Build(xyz, uv, 4, 4, (x, y) => false, false, true);
+            Check(none.VertexCount == 0, "fully see-through: nothing");
+            // an extruded sprite's side: a strip one pixel wide stays whole when that pixel is there
+            SteveModel.Mesh side = HeldItemMesh.Build(xyz, new float[] { 0.5f, 0, 0.75f, 0, 0.75f, 0.25f, 0.5f, 0.25f }, 4, 4, (x, y) => x == 2 && y == 0, false, true);
+            Check(side.VertexCount == 4, "a one-pixel strip stays whole");
+
+            Check(HeldItemMesh.Numbers("{\"t\":\"held\",\"v\":[1.5,-2,3e-1],\"uv\":[]}", "v").Length == 3 && HeldItemMesh.Numbers("{\"v\":[1.5,-2,3e-1]}", "v")[2] == 0.3f
+                  && HeldItemMesh.Numbers("{}", "v").Length == 0 && HeldItemMesh.Numbers("{\"uv\":[]}", "uv").Length == 0, "number lists parse");
+
+            // armour: each slot on its own parts, grown outside Steve's own boxes
+            Func<int, int, bool> solid = (x, y) => true;
+            Check(SteveModel.BuildArmour(SteveModel.Part.Head, SteveModel.ArmourSlot.Head, 64, 32, solid).VertexCount > 0 &&
+                  SteveModel.BuildArmour(SteveModel.Part.Body, SteveModel.ArmourSlot.Head, 64, 32, solid).VertexCount == 0, "helmet: head only");
+            Check(SteveModel.BuildArmour(SteveModel.Part.LeftArm, SteveModel.ArmourSlot.Chest, 64, 32, solid).VertexCount > 0 &&
+                  SteveModel.BuildArmour(SteveModel.Part.LeftLeg, SteveModel.ArmourSlot.Chest, 64, 32, solid).VertexCount == 0, "chestplate: body and arms");
+            Check(SteveModel.BuildArmour(SteveModel.Part.Body, SteveModel.ArmourSlot.Legs, 64, 32, solid).VertexCount > 0 &&
+                  SteveModel.BuildArmour(SteveModel.Part.RightLeg, SteveModel.ArmourSlot.Feet, 64, 32, solid).VertexCount > 0 &&
+                  SteveModel.BuildArmour(SteveModel.Part.Body, SteveModel.ArmourSlot.Feet, 64, 32, solid).VertexCount == 0, "leggings and boots");
+            SteveModel.Mesh helmet = SteveModel.BuildArmour(SteveModel.Part.Head, SteveModel.ArmourSlot.Head, 64, 32, solid);
+            float maxX = 0f;
+            for (int v = 0; v < helmet.VertexCount; v++)
+            {
+                maxX = Math.Max(maxX, helmet.Positions[v * 3]);
+            }
+
+            Check(Math.Abs(maxX - 5.5f) < 1e-4, "helmet grown 1 pixel, its hat 1.5: " + maxX);
         }
 
         private static void HerobrineEyes()

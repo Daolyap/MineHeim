@@ -98,7 +98,7 @@ namespace MineHeim
                 if (ZInput.GetKeyDown(Plugin.AvatarKey.Value, false))
                 {
                     Plugin.SteveAvatarMode.Value = SteveAvatar.Native ? Plugin.AvatarMode.Minecraft : Plugin.AvatarMode.Native;
-                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, SteveAvatar.Native ? "Steve: drawn by Valheim" : "Steve: drawn by Minecraft (with his held item)");
+                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, SteveAvatar.Native ? "Steve: drawn by Valheim" : "Steve: drawn by Minecraft");
                 }
             }
 
@@ -198,7 +198,7 @@ namespace MineHeim
             }
 
             lines.Add((McMode ? "You are Steve (" + Plugin.GameMode.Value + ")" : "You are the Viking (F7: Steve)") + ", Steve drawn by " +
-                      (SteveAvatar.Native ? "Valheim, skin " + SteveAvatar.SkinSource : "Minecraft"));
+                      (SteveAvatar.Native ? "Valheim, skin " + SteveAvatar.SkinSource + ", " + SteveGear.Summary : "Minecraft"));
             int shown = 0;
             foreach (NetherBridge.Zone z in NetherBridge.Zones.Values)
             {

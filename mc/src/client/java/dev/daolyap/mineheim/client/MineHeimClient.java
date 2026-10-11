@@ -206,6 +206,7 @@ public class MineHeimClient implements ClientModInitializer {
 		}
 
 		NetherAir.tick(minecraft);
+		HeldItems.tick(minecraft);
 		if (!configured) {
 			configured = true;
 			configure(minecraft.options);

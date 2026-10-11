@@ -181,6 +181,50 @@ namespace MineHeim.Core
 
         [ThreadStatic] private static Func<int, int, bool> _opaque;
 
+        // ------------------------------------------------------------------ armour
+
+        public enum ArmourSlot
+        {
+            Head,
+            Chest,
+            Legs,
+            Feet,
+        }
+
+        /// <summary>
+        /// Minecraft's humanoid armour on one part: the part's own boxes, grown by 1 pixel (leggings, the inner layer: 0.5),
+        /// textured from the armour's 64x32 image in the classic layout (left limbs use the right limbs' pixels). A helmet is
+        /// the head and its hat; a chestplate the body and arms (always 4 pixels wide: armour is not slim); leggings the body
+        /// and legs; boots the legs. Empty if the slot does not cover the part. `opaque(x, y)`: the armour's drawn pixels.
+        /// </summary>
+        public static Mesh BuildArmour(Part part, ArmourSlot slot, int texWidth, int texHeight, Func<int, int, bool> opaque)
+        {
+            var mesh = new Mesh();
+            float grow = slot == ArmourSlot.Legs ? 0.5f : 1f;
+            _opaque = opaque ?? ((x, y) => true);
+            switch (part)
+            {
+                case Part.Head when slot == ArmourSlot.Head:
+                    Box(mesh, -4, 0, -4, 8, 8, 8, 0, 0, grow, texWidth, texHeight);
+                    Box(mesh, -4, 0, -4, 8, 8, 8, 32, 0, grow + 0.5f, texWidth, texHeight);
+                    break;
+                case Part.Body when slot == ArmourSlot.Chest || slot == ArmourSlot.Legs:
+                    Box(mesh, -4, -12, -2, 8, 12, 4, 16, 16, grow, texWidth, texHeight);
+                    break;
+                case Part.RightArm when slot == ArmourSlot.Chest:
+                case Part.LeftArm when slot == ArmourSlot.Chest:
+                    Box(mesh, part == Part.RightArm ? -1 : -3, -10, -2, 4, 12, 4, 40, 16, grow, texWidth, texHeight);
+                    break;
+                case Part.RightLeg when slot == ArmourSlot.Legs || slot == ArmourSlot.Feet:
+                case Part.LeftLeg when slot == ArmourSlot.Legs || slot == ArmourSlot.Feet:
+                    Box(mesh, -2, -12, -2, 4, 12, 4, 0, 16, grow, texWidth, texHeight);
+                    break;
+            }
+
+            _opaque = null;
+            return mesh;
+        }
+
         // ------------------------------------------------------------------ Herobrine
 
         /// <summary>

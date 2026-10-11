@@ -116,7 +116,7 @@ namespace MineHeim
                 "In Minecraft mode, hide Valheim's hotbar (Minecraft's is the one in use). Health, stamina and food stay.");
             SteveAvatarMode = Config.Bind("Steve", "Avatar", AvatarMode.Native,
                 "Who draws Steve. Native: Valheim, on the Viking in the same frame, so he never trails behind or doubles up when you run or turn " +
-                "(no held item or armour on him yet). Minecraft: Minecraft's own picture of him, with his held item and armour, a frame or two late.");
+                "(his held items and armour are Minecraft's own models, sent over). Minecraft: Minecraft's own picture of him, a frame or two late.");
             SteveSkin = Config.Bind("Steve", "Skin", SkinChoice.Steve,
                 "Steve's skin. Steve: classic Steve. Account: the skin of the Minecraft account you play on (fetched from Mojang when Minecraft starts). " +
                 "File: a skin PNG of your own (Steve.SkinFile).");
@@ -139,7 +139,7 @@ namespace MineHeim
                 "Show MineHeim's status on screen: Minecraft attached or not, frame rate and Minecraft's delay, who draws Steve, the Nether and End portals near you. " +
                 "While Minecraft is not attached (it crashed, or you closed it) it also starts it again.");
             AvatarKey = Config.Bind("Input", "AvatarKey", KeyCode.F11,
-                "Switch who draws Steve (Steve.Avatar): Valheim (no trailing when you run or turn) or Minecraft (with his held item and armour).");
+                "Switch who draws Steve (Steve.Avatar): Valheim (no trailing when you run or turn) or Minecraft (a frame or two late).");
             AutoStart = Config.Bind("Minecraft", "AutoStart", true,
                 "Start Minecraft when Valheim starts (if none is running): the MineHeim instance of the Prism Launcher that Install.cmd set up, or Minecraft.LaunchCommand.");
             LaunchCommand = Config.Bind("Minecraft", "LaunchCommand", "",
@@ -296,6 +296,7 @@ namespace MineHeim
             SendGameMode();
             InputBridge.SendSteve();
             SteveAvatar.RequestSkin();
+            SteveGear.Request();
             Link.Send("{\"t\":\"mobfight\",\"on\":" + (MobsHunt.Value ? "true" : "false") + "}");
         }
 

@@ -60,6 +60,36 @@ namespace MineHeim
 
         internal static bool Native => Plugin.SteveAvatarMode.Value == Plugin.AvatarMode.Native;
 
+        // ------------------------------------------------------------------ for SteveGear (what he holds and wears)
+
+        /// <summary>A part of Steve's model to hang things on, or null while he is not built.</summary>
+        internal static Transform PartTransform(SteveModel.Part part) => _root != null ? Parts[(int)part] : null;
+
+        internal static bool Slim => _slim;
+
+        internal static ShadowCastingMode ShadowMode => _shadowMode;
+
+        /// <summary>A material like his skin's, with another texture.</summary>
+        internal static Material GearMaterial(Texture2D texture)
+        {
+            texture.filterMode = FilterMode.Point;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            return new Material(_material) { name = "MineHeim Steve gear", mainTexture = texture };
+        }
+
+        /// <summary>A PNG as a readable texture, or null.</summary>
+        internal static Texture2D LoadPng(byte[] png)
+        {
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (LoadImage == null || !(bool)LoadImage.Invoke(null, new object[] { texture, png, false }))
+            {
+                UnityEngine.Object.Destroy(texture);
+                return null;
+            }
+
+            return texture;
+        }
+
         /// <summary>Shown right now (status line).</summary>
         internal static bool Shown => _root != null && _root.activeSelf;
 
@@ -390,6 +420,8 @@ namespace MineHeim
                 SteveModel.Pivot(part, _slim, out px, out py, out pz);
                 Pivots[p] = new Vector3(px, py, pz);
             }
+
+            SteveGear.Attach(); // a new skin may have changed his arms (slim or wide): his items sit accordingly
         }
 
         // ------------------------------------------------------------------ every frame
@@ -541,6 +573,8 @@ namespace MineHeim
                 {
                     r.shadowCastingMode = mode;
                 }
+
+                SteveGear.SetShadow(mode);
             }
         }
     }

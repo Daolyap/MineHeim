@@ -48,3 +48,10 @@ L6, and B, F, M, I, W, N, E, P (not reached).
 | R3 | F11 (Minecraft draws Steve) | His eyes are white there too (lit like the rest of him, no glow) |
 | R4 | `Steve.HerobrineEyes = Off`, then back to `Always` | Steve's own eyes come back, then Herobrine's |
 | R5 | `Steve.Skin = Account` with `HerobrineEyes = ClassicSteveOnly` | The account's own eyes; `Always` whitens them |
+| G12b | Valheim draws Steve (F11 until it says Valheim): hold a diamond sword, a pickaxe, a block, a torch, a bow | Each is in his right hand as Minecraft holds it (compare with F11); F10 shows `skin ..., <item>` |
+| A14b | Shield in the off hand, raise it (right button) | The shield model is on his left arm and comes up with the block pose |
+| G13 | Change slots quickly with the wheel | The item in his hand follows within a tick; no leftovers in the hand |
+| G14 | Hold a dyed or enchanted item, a spawn egg, a potion | Its colours as in Minecraft (no enchantment glint) |
+| G15 | Wear iron armour, then leather dyed red, then a turtle helmet | Each piece on him like in Minecraft (leather red, with its overlay); taking it off removes it |
+| G16 | Slim skin (`Steve.Skin = File` with `SkinSlimArms = true`) | Held items still sit in the hand |
+| G17 | Look in `latest.log` (Minecraft) after changing items | `held item for the host: main hand ... (N quads)` lines; tell me if one says 0 quads for an item you could see |

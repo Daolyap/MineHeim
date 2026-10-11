@@ -174,6 +174,12 @@ namespace MineHeim
                 case "armswing":
                     SteveAvatar.OnArmSwing();
                     return;
+                case "held":
+                    SteveGear.OnHeld(message);
+                    return;
+                case "armor":
+                    SteveGear.OnArmour(message);
+                    return;
                 case "infect":
                     Plugin.Nether.OnInfect(message);
                     return;
