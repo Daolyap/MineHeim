@@ -2,9 +2,32 @@
 
 ## 1.0.0 (release candidate, branch `v1/nether-infection`: play test pending)
 
+### After play test round 2
+
+- **One inventory.** Tab in Minecraft mode shows the Viking's bag beside Minecraft's inventory, with Valheim's own icons. Click a
+  Valheim item to put a stand-in for it on Steve's hotbar: selected, the Viking holds the real item and the mouse is Valheim's, so
+  the hammer and hoe build, Valheim weapons attack and food is eaten, without leaving Minecraft mode. Items with a twin move across
+  with a shift-click (or by putting them down on the bag). **[open]** shows the Viking's own inventory.
+- **Steve holds and wears what he has.** Valheim's Steve now carries his held items (both hands) and armour, taken from
+  Minecraft itself: the item models are exactly what Minecraft draws (a shield is its shield model), leather keeps its dye.
+- **Weapons are Valheim weapons.** Steve's weapons fight as a Valheim weapon of their tier (wood, stone and gold: Meadows; copper:
+  Black Forest; iron: Swamp; diamond: Mountains; netherite: Plains or later). Valheim's damage types, skills, stamina, stagger and
+  knockback apply; spam-clicking runs out of stamina, a fist is a fist, and bosses take a proper fight. Enchantments count
+  (Sharpness: quality, Fire Aspect: fire, Smite: spirit). Valheim's Silver now crosses as diamonds. `Events.SteveWeaponStats`.
+- **Eating as Steve feeds the Viking:** Minecraft's food is eaten as a Valheim food of the same standing (Survival).
+- **Minecraft's mobs fight the Viking too.** Creative only protects Steve: as the Viking (F7 off), Minecraft's monsters hunt you
+  and hit back.
+- **Valheim's hotbar hides in Minecraft mode** (health, stamina and food stay). `Steve.HideValheimHotbar`.
+- **Minecraft's music is off** by default; `Audio.MinecraftMusic` and `Audio.MinecraftVolume` set it from Valheim.
+- **Was it Herobrine all along?** Steve has white, glowing eyes. `Steve.HerobrineEyes`.
+- **Minecraft always closes with Valheim**: after a quit, the process ends a few seconds after the world is saved, or after 30 s
+  at most, and says in its log what kept it if it had to be ended.
+
+### Before
+
 - **Steve no longer trails or doubles up when you run or turn.** Valheim now draws Steve itself, on the Viking in the same frame,
   instead of using Minecraft's picture of him (which arrives a frame or two late). He walks, crouches, sits, turns his head and
-  swings his arm when Minecraft does. For now he carries no held item or armour; `Steve.Avatar = Minecraft` brings back the old way.
+  swings his arm when Minecraft does. `Steve.Avatar = Minecraft` brings back the old way.
 - **Skins:** `Steve.Skin` = Steve (classic, the default), Account (your Minecraft account's own skin, slim arms included) or File
   (any skin PNG, `Steve.SkinFile`). Old 64x32 skins work too (a solid hat area is no hat, as in Minecraft). A raised shield
   shows: Steve holds his left arm up across his chest.
