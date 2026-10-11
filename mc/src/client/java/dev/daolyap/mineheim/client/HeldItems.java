@@ -104,6 +104,14 @@ public final class HeldItems {
 
 	private static void sendHeld(final Minecraft minecraft, final LocalPlayer player, final String hand, final ItemStack stack, final HumanoidArm arm) {
 		ItemCapture.Result r = null;
+		String valheim = ValheimBag.standIn(stack);
+		if (!valheim.isEmpty()) {
+			// a Valheim item's stand-in: the host shows the real item (the Viking holds it), nothing of Minecraft's
+			MineHeim.events.accept("{\"t\":\"held\",\"hand\":\"" + hand + "\",\"arm\":\"" + (arm == HumanoidArm.LEFT ? "left" : "right") + "\",\"item\":\"\",\"valheim\":\""
+				+ valheim.replace("\"", "") + "\"}");
+			return;
+		}
+
 		if (!stack.isEmpty()) {
 			boolean left = arm == HumanoidArm.LEFT;
 			ItemStackRenderState state = new ItemStackRenderState();

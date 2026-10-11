@@ -195,6 +195,18 @@ namespace MineHeim
                 case "selected":
                     InputBridge.McSlot = Messages.IntValue(message, "n", -1);
                     Plugin.Log.LogInfo("minecraft hotbar slot -> " + InputBridge.McSlot);
+                    StandIns.Select(Messages.StringValue(message, "valheim", ""));
+                    return;
+                case "vcross":
+                    VikingBag.OnCross(message);
+                    return;
+                case "vopen":
+                    // [open] on the bag in Minecraft's inventory: the Viking's own inventory (armour, crafting)
+                    if (InventoryGui.instance != null && Player.m_localPlayer != null && !InventoryGui.IsVisible())
+                    {
+                        InventoryGui.instance.Show(null);
+                    }
+
                     return;
                 case "hello":
                 case "ready":
@@ -315,6 +327,7 @@ namespace MineHeim
             MinecraftLauncher.Tick();
             UpdateVikingVisibility(player);
             UpdateValheimHotbar(player);
+            VikingBag.Tick(player);
             Flight.Tick(player);
             Plugin.Lights.Tick(player, yOffset);
             Plugin.Mobs.Tick(player, yOffset);

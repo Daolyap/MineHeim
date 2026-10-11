@@ -45,6 +45,11 @@ namespace MineHeim
                 return true; // a Minecraft screen has the keyboard and mouse
             }
 
+            if (StandIns.Holding && (button == "Attack" || button == "SecondaryAttack" || button == "Block"))
+            {
+                return false; // a Valheim item's stand-in is selected: its clicks are Valheim's (build, attack, block)
+            }
+
             return Active && (button == "Attack" || button == "SecondaryAttack" || button == "Block" || button == "AutoRun" || button == "Inventory" ||
                               button == "OpenEmote" || button.StartsWith("Hotbar"));
         }
@@ -60,6 +65,7 @@ namespace MineHeim
             _activeFrame = -1;
             ReleaseAll();
             SendSteve();
+            StandIns.Apply(); // a selected stand-in's item is equipped again (or put away)
             Plugin.Log.LogInfo("minecraft mode " + (on ? "ON" : "off") + " (" + why + ")");
             Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, on ? "Minecraft mode on: you are Steve" : "Minecraft mode off: you are the Viking");
         }
@@ -132,11 +138,25 @@ namespace MineHeim
             Mouse mouse = Mouse.current;
             if (mouse != null)
             {
-                Forward(mouse.leftButton, "attack", ref _attackDown);
-                Forward(mouse.rightButton, "use", ref _useDown);
-                Forward(mouse.middleButton, "pick", ref _pickDown);
+                if (StandIns.Holding)
+                {
+                    // a Valheim item at hand: the buttons are Valheim's (InputPatches let them through); the right button eats
+                    // or drinks what can be eaten or drunk
+                    ReleaseAll();
+                    if (mouse.rightButton.wasPressedThisFrame)
+                    {
+                        StandIns.Use();
+                    }
+                }
+                else
+                {
+                    Forward(mouse.leftButton, "attack", ref _attackDown);
+                    Forward(mouse.rightButton, "use", ref _useDown);
+                    Forward(mouse.middleButton, "pick", ref _pickDown);
+                }
+
                 float wheel = mouse.scroll.ReadValue().y;
-                if ((wheel > 0.5f || wheel < -0.5f) && !AltHeld)
+                if ((wheel > 0.5f || wheel < -0.5f) && !AltHeld && !ValheimWheel)
                 {
                     int notches = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(wheel) / 120f));
                     for (int i = 0; i < notches; i++)
@@ -182,6 +202,12 @@ namespace MineHeim
 
         /// <summary>Alt held: the wheel zooms Valheim's camera even in Minecraft mode (it otherwise turns Minecraft's hotbar).</summary>
         public static bool AltHeld => Keyboard.current != null && Keyboard.current.altKey.isPressed;
+
+        /// <summary>
+        /// Placing a Valheim piece with a stand-in hammer, hoe or cultivator: the wheel turns the piece, as in Valheim (the
+        /// number keys still change Minecraft's slot).
+        /// </summary>
+        public static bool ValheimWheel => StandIns.Holding && Player.m_localPlayer != null && Player.m_localPlayer.InPlaceMode();
 
         /// <summary>The status key: what MineHeim is doing, top left; starts Minecraft again if it is not attached.</summary>
         private static void ShowStatus(Player player)
@@ -310,9 +336,9 @@ namespace MineHeim
     {
         private static bool Prefix(ref float __result)
         {
-            if (!InputBridge.Active || InputBridge.AltHeld)
+            if (!InputBridge.Active || InputBridge.AltHeld || InputBridge.ValheimWheel)
             {
-                return true; // Alt + wheel: Valheim's camera zoom, also in Minecraft mode
+                return true; // Alt + wheel: Valheim's camera zoom, also in Minecraft mode; placing a piece: it turns
             }
 
             __result = 0f;
@@ -330,6 +356,10 @@ namespace MineHeim
             if (__result && __instance == Player.m_localPlayer)
             {
                 InputBridge.ValheimAttacks++;
+                if (StandIns.Holding)
+                {
+                    SteveAvatar.OnArmSwing(); // Steve swings with the Valheim weapon the Viking attacks with
+                }
             }
         }
     }

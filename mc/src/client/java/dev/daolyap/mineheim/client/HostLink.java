@@ -136,6 +136,8 @@ public final class HostLink extends WebSocketServer {
 					m.has("player") && m.get("player").getAsBoolean());
 				case "mobfight" -> Creatures.fight = m.get("on").getAsBoolean();
 				case "heldreq" -> HeldItems.request();
+				case "vinv" -> ValheimBag.onInventory(m);
+				case "vicon" -> ValheimBag.onIcon(m);
 				case "skinreq" -> SkinSender.request(m.has("mode") ? m.get("mode").getAsString() : "steve", m.has("herobrine") && m.get("herobrine").getAsBoolean());
 				case "vstats" -> MineHeimClient.vikingStats(m.get("hp").getAsFloat(), m.get("food").getAsInt());
 				case "projhit" -> {

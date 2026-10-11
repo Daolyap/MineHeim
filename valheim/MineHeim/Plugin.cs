@@ -297,6 +297,7 @@ namespace MineHeim
             InputBridge.SendSteve();
             SteveAvatar.RequestSkin();
             SteveGear.Request();
+            VikingBag.Reset();
             Link.Send("{\"t\":\"mobfight\",\"on\":" + (MobsHunt.Value ? "true" : "false") + "}");
         }
 

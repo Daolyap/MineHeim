@@ -61,13 +61,16 @@ Step-by-step with screenshots: [docs/INSTALL.md](docs/INSTALL.md). To remove it,
 | **F7** | Minecraft mode: you are Steve. The mouse buttons break, place and hit (anything in hand hits Valheim's creatures), the wheel and 1-9 pick Minecraft's hotbar, **Q** throws (Ctrl+Q the stack), **Tab** opens Minecraft's inventory, **T** its chat, **/** a command. F7 again: you are the Viking, with everything Valheim's (Minecraft's blocks, mobs and items stay). |
 | **F8** | Steve: Creative <-> Survival |
 | **F10** | MineHeim's status, top left: Minecraft attached, frame rate and delay, who draws Steve, the portals near you. If Minecraft is not running (it crashed, or you closed it), it starts it again. |
-| **F11** | who draws Steve: Valheim (never trails behind) or Minecraft (with his held item and armour) |
+| **F11** | who draws Steve: Valheim (never trails behind; his held items and armour are Minecraft's own models) or Minecraft |
+| **Tab** (Minecraft mode) | Minecraft's inventory, with the **Viking's bag** beside it. Click a Valheim item: it goes on Steve's hotbar as a stand-in (the item stays in the bag). Shift-click one with a Minecraft twin: it moves into Minecraft. Put a Minecraft item down on the bag: it moves into Valheim. **[open]**: the Viking's own Valheim inventory (armour, crafting). |
+| **a Valheim stand-in selected** (Minecraft mode) | the Viking holds the real item and the mouse is Valheim's: the hammer and hoe build (the wheel turns the piece, right button the build menu), a Valheim weapon attacks, the right button eats or drinks food and meads. Pick a Minecraft slot (1-9) to go back. |
 | **Alt + wheel** (Minecraft mode) | zoom Valheim's camera (the wheel alone picks Minecraft's hotbar) |
 | **Jump, Jump** (double-tap, as Steve) | Creative: fly or land. Hold Jump to rise, Left Ctrl to sink, Run to go faster. |
 | **Right mouse, held** (Minecraft mode) | raise Minecraft's shield |
 | **drop an item** (Valheim inventory) | items with a Minecraft twin cross into Minecraft |
-| **E** on a Minecraft chest, crafting table or furnace | opens it, as the Viking too |
-| everything else | Valheim's own: walking, E, the camera, menus |
+| **E** on a Minecraft chest, crafting table or furnace | opens it as the Viking (as Steve, the right button does) |
+| **E** as Steve | Valheim's own: doors, chests, workbenches and forges, beds, portals, ship helms, chairs, all as the Viking would |
+| everything else | Valheim's own: walking, the camera, menus |
 
 All settings live in `Valheim\BepInEx\config\dev.daolyap.mineheim.cfg`; see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 

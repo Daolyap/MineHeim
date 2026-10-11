@@ -1,7 +1,9 @@
 package dev.daolyap.mineheim;
 
 import java.util.Locale;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -30,6 +32,12 @@ public final class HostItems {
 	private HostItems() {
 	}
 
+	/** A stand-in for a Valheim item on Steve's hotbar (the client's ValheimBag makes them). */
+	static boolean isStandIn(final ItemStack stack) {
+		CustomData data = stack.is(Items.STRUCTURE_VOID) ? stack.get(DataComponents.CUSTOM_DATA) : null;
+		return data != null && data.copyTag().contains("mineheim_valheim");
+	}
+
 	private static String key(final ItemStack stack) {
 		return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 	}
@@ -44,6 +52,11 @@ public final class HostItems {
 			item.addTag(OFFERED_TAG);
 			ItemStack stack = item.getItem();
 			if (stack.isEmpty()) {
+				continue;
+			}
+
+			if (isStandIn(stack)) {
+				item.discard(); // a Valheim item's stand-in is only a link: thrown away, it is gone (the item stays in the Viking's bag)
 				continue;
 			}
 

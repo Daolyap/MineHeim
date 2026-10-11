@@ -90,12 +90,15 @@ public class MineHeimClient implements ClientModInitializer {
 	private static int respawnIn;
 	/** The hotbar slot last reported to the host ({"t":"selected","n":slot}), so it can see its number keys and wheel arrive. */
 	private static int reportedSlot = -1;
+	/** The Valheim item of the stand-in in the reported slot ("" = none). */
+	private static String reportedValheim = "";
 
 	@Override
 	public void onInitializeClient() {
 		HostLink.launch();
 		EntityRendererRegistry.register(CreatureProxy.TYPE, NoopRenderer::new); // the host's creatures are drawn by the host
 		ClientTickEvents.END_CLIENT_TICK.register(MineHeimClient::tick);
+		ValheimBag.register();
 		// however Minecraft is closed, it must not linger in Task Manager: a watchdog ends the process if the quit stalls
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> HostView.onClientStopping());
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> HostView.onServerStopped());
@@ -198,10 +201,13 @@ public class MineHeimClient implements ClientModInitializer {
 				MineHeim.events.accept("{\"t\":\"shield\",\"up\":" + shield + "}");
 			}
 
+			// the selected slot, and the Valheim item if it holds a stand-in (the host then equips it and takes the mouse)
 			int slot = minecraft.player.getInventory().getSelectedSlot();
-			if (slot != reportedSlot) {
+			String valheim = ValheimBag.standIn(minecraft.player.getInventory().getItem(slot));
+			if (slot != reportedSlot || !valheim.equals(reportedValheim)) {
 				reportedSlot = slot;
-				MineHeim.events.accept("{\"t\":\"selected\",\"n\":" + slot + "}");
+				reportedValheim = valheim;
+				MineHeim.events.accept("{\"t\":\"selected\",\"n\":" + slot + ",\"valheim\":\"" + valheim.replace("\"", "") + "\"}");
 			}
 		}
 
