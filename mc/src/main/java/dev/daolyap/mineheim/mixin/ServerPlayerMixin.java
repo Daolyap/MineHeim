@@ -12,12 +12,19 @@ import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayer.class)
 abstract class ServerPlayerMixin {
+	/** The last hit sent to the host (game tick, hit points), for Minecraft's invulnerability after a hit. */
+	@Unique
+	private long mineheim$hurtTick = Long.MIN_VALUE / 2;
+	@Unique
+	private float mineheim$hurtAmount;
+
 	/** Minecraft moving the player (ender pearls, /tp) moves the host's player too; otherwise the host would pull it back. */
 	@Inject(method = "teleport(Lnet/minecraft/world/level/portal/TeleportTransition;)Lnet/minecraft/server/level/ServerPlayer;", at = @At("HEAD"))
 	private void mineheim$teleported(final TeleportTransition transition, final CallbackInfoReturnable<ServerPlayer> cir) {
@@ -40,24 +47,45 @@ abstract class ServerPlayerMixin {
 	 * suffocation and the like are not sent either: the host moves the player, Minecraft's physics never decide its fate.
 	 */
 	@Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
-	private void mineheim$hostOwnsHealth(final ServerLevel level, final DamageSource source, final float amount, final CallbackInfoReturnable<Boolean> cir) {
+	private void mineheim$hostOwnsHealth(final ServerLevel level, final DamageSource source, final float hit, final CallbackInfoReturnable<Boolean> cir) {
 		if (!MineHeim.active) {
 			return;
 		}
 
+		cir.setReturnValue(false);
 		Entity self = (Entity) (Object) this;
 		Entity attacker = source.getEntity();
-		if (attacker != null && attacker != self && amount > 0f && !source.is(DamageTypeTags.IS_EXPLOSION)) {
+		boolean byMob = attacker != null && attacker != self && !source.is(DamageTypeTags.IS_EXPLOSION);
+		boolean burn = attacker == null && source.is(DamageTypeTags.IS_FIRE) && !((ServerPlayer) (Object) this).isCreative();
+		if (hit <= 0f || !byMob && !burn) {
+			return;
+		}
+
+		// Minecraft's own invulnerability after a hit, which never starts here (the hit is cancelled): for 10 ticks only a
+		// harder hit counts, and only by how much harder it is. Without it a crowd of mobs, lava or fire hits every tick.
+		long now = level.getGameTime();
+		float amount = hit;
+		if (now - this.mineheim$hurtTick < 10L) {
+			if (hit <= this.mineheim$hurtAmount) {
+				return;
+			}
+
+			amount = hit - this.mineheim$hurtAmount;
+			this.mineheim$hurtAmount = hit;
+		} else {
+			this.mineheim$hurtTick = now;
+			this.mineheim$hurtAmount = hit;
+		}
+
+		if (byMob) {
 			Vec3 from = source.getSourcePosition() != null ? source.getSourcePosition() : attacker.position();
 			String src = BuiltInRegistries.ENTITY_TYPE.getKey(attacker.getType()).getPath();
 			MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"hurt\",\"amount\":%.2f,\"src\":\"%s\",\"pos\":[%.3f,%.3f,%.3f]}",
 				amount, src, from.x, from.y, from.z));
-		} else if (attacker == null && amount > 0f && source.is(DamageTypeTags.IS_FIRE) && !((ServerPlayer) (Object) this).isCreative()) {
+		} else {
 			// fire, lava, a magma block (the Nether infection's ground): the host's player burns, as fire damage
 			MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"hurt\",\"amount\":%.2f,\"src\":\"%s\",\"fire\":true,\"pos\":[%.3f,%.3f,%.3f]}",
 				amount, source.getMsgId(), self.getX(), self.getY(), self.getZ()));
 		}
-
-		cir.setReturnValue(false);
 	}
 }

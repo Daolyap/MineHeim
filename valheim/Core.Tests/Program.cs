@@ -440,6 +440,8 @@ namespace MineHeim.Core.Tests
             Check(Messages.Mobs("{\"t\":\"mobs\",\"m\":[]}").Count == 0, "no mobs");
             Check(Messages.MobHit(51, 2.5, -1, true) == "{\"t\":\"mhit\",\"id\":51,\"amount\":2.5,\"by\":-1,\"player\":true}", "mhit message: " + Messages.MobHit(51, 2.5, -1, true));
             Check(Messages.HealthPerPoint(100) == 5 && Messages.HealthPerPoint(25) == 1.25 && Messages.HealthPerPoint(10) == 1.25, "exchange rate: 100 health -> 5 per point, never under 25/20");
+            Check(Messages.ExplosionPoints(0, 4) == 57 && Math.Abs(Messages.ExplosionPoints(4, 4) - 22) < 1e-9 && Messages.ExplosionPoints(8, 4) == 0 && Messages.ExplosionPoints(9, 4) == 0,
+                "Minecraft's TNT: 57 at the centre, 22 four blocks out, none from eight");
             var pl = Messages.Projectiles("{\"t\":\"proj\",\"p\":[[12,\"arrow\",-1.500,64.250,3.000,9.0],[13,\"firework\",0.000,70.000,-2.250]]}");
             Check(pl.Count == 2 && pl[0].Damage == 9 && pl[1].Damage == -1 && pl[1].Z == -2.25, "projectile damage parse (optional)");
             const string chit = "{\"t\":\"chit\",\"id\":-12,\"amount\":3.00,\"src\":\"zombie\",\"by\":51,\"ranged\":false,\"pos\":[1.000,100.000,-2.500]}";

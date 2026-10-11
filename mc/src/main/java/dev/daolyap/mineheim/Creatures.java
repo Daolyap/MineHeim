@@ -17,6 +17,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 
@@ -118,23 +123,57 @@ public final class Creatures {
 		}
 	}
 
-	/** Monsters that aren't busy go for the nearest of the host's creatures they can see. */
+	/**
+	 * Monsters that aren't busy go for the nearest of the host's creatures they can see, as far as they would notice a
+	 * player (a zombie 35 blocks, a ghast 64 and more). Neutral mobs (zombified piglins, endermen) only fight back, as in
+	 * Minecraft. Mobs run by a brain (piglins, hoglins...) get it as their brain's target, the way they pick a player.
+	 */
 	private static void hunt(final ServerLevel level) {
+		Map<Mob, CreatureProxy> best = new HashMap<>();
+		Map<Mob, Double> bestDistance = new HashMap<>();
 		for (CreatureProxy p : proxies.values()) {
 			if (p.isRemoved()) {
 				continue;
 			}
 
-			List<Mob> near = level.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(16.0), m -> m instanceof Enemy && !(m instanceof CreatureProxy) && m.isAlive());
+			List<Mob> near = level.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(HUNT_RANGE),
+				m -> m instanceof Enemy && !(m instanceof NeutralMob) && !(m instanceof CreatureProxy) && m.isAlive());
 			for (Mob m : near) {
-				LivingEntity target = m.getTarget();
-				if (target != null && target.isAlive() && !(target instanceof CreatureProxy && target.isRemoved())) {
+				double d = m.distanceToSqr(p), range = m.getAttributeValue(Attributes.FOLLOW_RANGE);
+				if (d > range * range || busy(m) || d >= bestDistance.getOrDefault(m, Double.MAX_VALUE) || !m.getSensing().hasLineOfSight(p)) {
 					continue;
 				}
 
-				if (m.getSensing().hasLineOfSight(p)) {
-					m.setTarget(p);
-				}
+				best.put(m, p);
+				bestDistance.put(m, d);
+			}
+		}
+
+		best.forEach(Creatures::attack);
+	}
+
+	/** How far around a creature to look for monsters: the farthest any mob notices a target (a ghast). */
+	private static final double HUNT_RANGE = 64.0;
+
+	/** Whether the mob already has a live target (a goal's, or its brain's). */
+	private static boolean busy(final Mob m) {
+		LivingEntity target = m.getTarget();
+		if (target != null && target.isAlive() && !target.isRemoved()) {
+			return true;
+		}
+
+		Brain<?> brain = m.getBrain();
+		return brain.checkMemory(MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED)
+			&& brain.getMemory(MemoryModuleType.ATTACK_TARGET).filter(t -> t.isAlive() && !t.isRemoved()).isPresent();
+	}
+
+	private static void attack(final Mob m, final CreatureProxy p) {
+		m.setTarget(p);
+		Brain<?> brain = m.getBrain();
+		if (brain.checkMemory(MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED)) {
+			brain.setMemory(MemoryModuleType.ATTACK_TARGET, p);
+			if (brain.checkMemory(MemoryModuleType.ANGRY_AT, MemoryStatus.REGISTERED)) {
+				brain.setMemoryWithExpiry(MemoryModuleType.ANGRY_AT, p.getUUID(), 600L); // piglins keep to it (their target must be who they are angry at)
 			}
 		}
 	}

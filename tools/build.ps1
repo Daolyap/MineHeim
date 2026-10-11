@@ -63,8 +63,16 @@ if ('Valheim' -in $Parts) {
     & (Join-Path $repo 'valheim\fetch_deps.ps1')
     $props = @()
     if ($ValheimDir) { $props += "-p:ValheimDir=$ValheimDir" }
-    dotnet build (Join-Path $repo 'valheim\MineHeim\MineHeim.csproj') -c Release -v q --nologo @props
+    $started = Get-Date
+    dotnet build (Join-Path $repo 'valheim\MineHeim\MineHeim.csproj') -c Release -p:Platform=AnyCPU -v q --nologo @props
     if ($LASTEXITCODE) { throw 'Valheim plugin build failed (see above)' }
+    # the installer copies this file: make sure it is the one just built (not an old one beside a build that went elsewhere)
+    $dll = Get-Item (Join-Path $repo 'valheim\MineHeim\bin\Release\net472\MineHeim.dll') -ErrorAction SilentlyContinue
+    $sources = Get-ChildItem (Join-Path $repo 'valheim\MineHeim'), (Join-Path $repo 'valheim\Core') -Recurse -Filter *.cs |
+        Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } | Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $dll -or ($dll.LastWriteTime -lt $started -and $sources -and $sources.LastWriteTime -gt $dll.LastWriteTime)) {
+        throw "The Valheim plugin built, but valheim\MineHeim\bin\Release\net472\MineHeim.dll is older than its sources: the build went somewhere else."
+    }
     if ($Test) {
         Push-Location (Join-Path $repo 'valheim\Core.Tests'); try { dotnet run -c Release; if ($LASTEXITCODE) { throw 'Core.Tests failed' } } finally { Pop-Location }
     }

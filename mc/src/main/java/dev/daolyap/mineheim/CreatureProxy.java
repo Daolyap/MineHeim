@@ -71,9 +71,12 @@ public class CreatureProxy extends PathfinderMob implements Enemy {
 		builder.define(HEIGHT, 1.8F);
 	}
 
-	/** The host's creature's size (metres = blocks). */
+	/**
+	 * The host's creature's size (metres = blocks), half a block wider: it moves between the host's updates (~10 a second,
+	 * a running creature half a metre), and a mob's swing that would have reached it there should land.
+	 */
 	public void setSize(final float width, final float height) {
-		float w = Math.max(0.2F, Math.min(width, 8F)), h = Math.max(0.2F, Math.min(height, 12F));
+		float w = Math.max(0.2F, Math.min(width + 0.5F, 8.5F)), h = Math.max(0.2F, Math.min(height, 12F));
 		if (Math.abs(w - this.entityData.get(WIDTH)) > 0.05F || Math.abs(h - this.entityData.get(HEIGHT)) > 0.05F) {
 			this.entityData.set(WIDTH, w);
 			this.entityData.set(HEIGHT, h);
@@ -125,6 +128,15 @@ public class CreatureProxy extends PathfinderMob implements Enemy {
 	@Override
 	public boolean isPickable() {
 		return !this.level().isClientSide();
+	}
+
+	/**
+	 * Invisible only so nothing draws it: to Minecraft's mobs it is as plain to see as the host's creature is. (Minecraft
+	 * shrinks how far a mob notices an invisible target to 7%: piglins and hoglins would not even fight back past 2 blocks.)
+	 */
+	@Override
+	public double getVisibilityPercent(final ServerLevel level, final Entity lookingEntity) {
+		return 1.0;
 	}
 
 	@Override

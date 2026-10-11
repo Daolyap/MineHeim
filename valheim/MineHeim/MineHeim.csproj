@@ -11,6 +11,9 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <DebugType>portable</DebugType>
     <Deterministic>true</Deterministic>
+    <!-- always bin\<Configuration>\net472, where the installer looks: a Platform=x64 in the environment (a Visual Studio
+         developer prompt sets one) would otherwise build into bin\x64\Release and leave an old DLL to be installed -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
   </PropertyGroup>
 
   <!-- Valheim: -p:ValheimDir=..., else the main Steam folder from the registry, else Steam's default folder.

@@ -165,21 +165,49 @@ public final class ValheimBag {
 		});
 	}
 
-	/** The panel's top left corner: right of the inventory, or left of it when there is no room. */
-	private static int[] origin(final Screen screen) {
+	/**
+	 * Where the panel goes: beside the inventory on the side with more room, scaled down when it does not fit there (at a
+	 * large GUI scale the Creative inventory leaves only a narrow strip either side). {x, y, scale}; the panel is drawn in
+	 * its own coordinates (w x h, see {@link #size}) from there.
+	 */
+	private static float[] origin(final Screen screen) {
 		AbstractContainerScreenAccessor a = (AbstractContainerScreenAccessor) screen;
-		int w = cols * CELL + 8, h = rows * CELL + 18;
-		int x = a.mineheim$leftPos() + a.mineheim$imageWidth() + 4;
-		if (x + w > screen.width) {
-			x = Math.max(0, a.mineheim$leftPos() - w - 4);
-		}
-
-		return new int[] {x, a.mineheim$topPos(), w, h};
+		int[] size = size();
+		int left = a.mineheim$leftPos(), right = screen.width - (left + a.mineheim$imageWidth());
+		int room = Math.max(left, right) - 6;
+		float scale = Math.max(0.4F, Math.min(1.0F, room / (float) size[0]));
+		float x = right >= left ? left + a.mineheim$imageWidth() + 3 : left - 3 - size[0] * scale;
+		return new float[] {Math.max(0, x), a.mineheim$topPos(), scale};
 	}
 
-	private static void draw(final Screen screen, final GuiGraphicsExtractor g, final int mouseX, final int mouseY) {
-		int[] o = origin(screen);
-		int x0 = o[0], y0 = o[1];
+	/** The panel's own size, unscaled: the grid, its title and two lines of hint under it. */
+	private static int[] size() {
+		return new int[] {Math.max(cols * CELL + 8, 120), rows * CELL + 18};
+	}
+
+	/** Screen coordinates to the panel's own. */
+	private static double[] local(final float[] o, final double x, final double y) {
+		return new double[] {(x - o[0]) / o[2], (y - o[1]) / o[2]};
+	}
+
+	private static void draw(final Screen screen, final GuiGraphicsExtractor g, final int screenX, final int screenY) {
+		float[] o = origin(screen);
+		double[] m = local(o, screenX, screenY);
+		int mouseX = (int) Math.floor(m[0]), mouseY = (int) Math.floor(m[1]);
+		int[] size = size();
+		g.pose().pushMatrix();
+		g.pose().translate(o[0], o[1]);
+		g.pose().scale(o[2], o[2]);
+		try {
+			drawPanel(g, size[0], size[1], mouseX, mouseY);
+		} finally {
+			g.pose().popMatrix();
+		}
+	}
+
+	private static void drawPanel(final GuiGraphicsExtractor g, final int w, final int h, final int mouseX, final int mouseY) {
+		int x0 = 0, y0 = 0;
+		int[] o = {0, 0, w, h};
 		g.fill(x0, y0, x0 + o[2], y0 + o[3], 0xE0201810);
 		g.outline(x0, y0, o[2], o[3], 0xFF8A7048);
 		g.text(Minecraft.getInstance().font, "Viking's bag", x0 + 4, y0 + 4, 0xFFE8D8B0, false);
@@ -221,8 +249,10 @@ public final class ValheimBag {
 
 	/** A click on the panel (true: it was the panel's, Minecraft's screen does not see it). */
 	private static boolean click(final Screen screen, final MouseButtonEvent event) {
-		int[] o = origin(screen);
-		double mx = event.x(), my = event.y();
+		double[] m = local(origin(screen), event.x(), event.y());
+		int[] size = size();
+		int[] o = {0, 0, size[0], size[1]};
+		double mx = m[0], my = m[1];
 		if (mx < o[0] || my < o[1] || mx >= o[0] + o[2] || my >= o[1] + o[3]) {
 			return false;
 		}

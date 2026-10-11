@@ -344,6 +344,18 @@ namespace MineHeim.Core
             return Math.Max(25.0, vikingMaxHealth) / 20.0;
         }
 
+        /// <summary>
+        /// Minecraft's own explosion damage, in its points, `distance` blocks from the centre of a blast of `radius` (TNT 4):
+        /// impact = 1 - distance / (2 x radius), damage = (impact² + impact) / 2 x 7 x 2 x radius + 1 (TNT: 57 at the centre,
+        /// 22 four blocks out, 0 from eight). Cover is not counted.
+        /// </summary>
+        public static double ExplosionPoints(double distance, double radius)
+        {
+            double diameter = 2.0 * Math.Max(0.1, radius);
+            double impact = 1.0 - distance / diameter;
+            return impact <= 0.0 ? 0.0 : (impact * impact + impact) / 2.0 * 7.0 * diameter + 1.0;
+        }
+
         private static readonly System.Text.RegularExpressions.Regex ExplosionRx = new System.Text.RegularExpressions.Regex(
             @"""pos"":\[(-?[0-9.eE+-]+),(-?[0-9.eE+-]+),(-?[0-9.eE+-]+)\],""r"":(-?[0-9.eE+-]+)(?:,""src"":""(\w*)"")?");
 

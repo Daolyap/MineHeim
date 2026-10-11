@@ -169,8 +169,11 @@ namespace MineHeim
             hit.m_attacker = player.GetZDOID();
         }
 
-        /// <summary>One swing may hit everything in its arc (Valheim's multiHit), or only the nearest target.</summary>
-        public static bool MultiHit(Borrowed b) => b.Attack != null && b.Attack.m_multiHit;
+        /// <summary>
+        /// One swing may hit everything in its arc, or only the nearest target. As in Minecraft only a sword sweeps (where its
+        /// Valheim twin does too); an axe, a club or a pickaxe hits the one creature it is swung at.
+        /// </summary>
+        public static bool MultiHit(Borrowed b) => b.Weapon.Kind == WeaponKind.Sword && b.Attack != null && b.Attack.m_multiHit;
 
         /// <summary>Half the arc of the weapon's attack, degrees (Minecraft's own reach stays the reach).</summary>
         public static float HalfArc(Borrowed b) => b.Attack != null && b.Attack.m_attackAngle > 1f ? Mathf.Min(b.Attack.m_attackAngle, 180f) * 0.5f : 30f;

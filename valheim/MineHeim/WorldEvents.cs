@@ -203,7 +203,11 @@ namespace MineHeim
                 Vector3 away = target - center;
                 away.y = Mathf.Max(away.y, 0.25f * away.magnitude); // lifted a little, as a blast does
                 HitData hit = MakeHit(target, away, Plugin.ExplosionPush.Value * falloff);
-                hit.m_damage.m_blunt = Plugin.ExplosionDamage.Value * falloff * strength;
+                // Minecraft's own blast at the exchange rate (TNT that kills a zombie kills a Greydwarf, and grows with
+                // the Viking), never less than Events.ExplosionDamage
+                double rate = c.IsPlayer() ? MobBridge.HealthRate() : MobBridge.Rate();
+                float minecraft = (float)(Messages.ExplosionPoints(Vector3.Distance(center, c.transform.position), radiusBlocks) * rate);
+                hit.m_damage.m_blunt = Mathf.Max(Plugin.ExplosionDamage.Value * falloff, minecraft) * strength;
                 hit.m_staggerMultiplier = 2f;
                 c.Damage(hit);
                 hurt++;
@@ -336,6 +340,9 @@ namespace MineHeim
 
         private readonly List<KeyValuePair<Character, Vector3>> _targets = new List<KeyValuePair<Character, Vector3>>();
 
+        /// <summary>How far Minecraft's swing must have recharged for a pickaxe to dig Valheim's ground.</summary>
+        private const double DigCharge = 0.9;
+
         private void OnMelee(string item, double minecraftDamage, double charge, string enchantments)
         {
             Player player = Player.m_localPlayer;
@@ -449,6 +456,13 @@ namespace MineHeim
                 // nothing to chop or mine: a pickaxe digs the ground it points at, like a Valheim pickaxe
                 if (item.EndsWith("_pickaxe") && Plugin.PickaxeDigs.Value)
                 {
+                    if (charge >= 0 && charge < DigCharge)
+                    {
+                        // a dig is a full swing, as with a Valheim pickaxe: clicking faster than the swing recharges digs nothing
+                        Plugin.Log.LogInfo(item + string.Format(" swing: too quick to dig ({0:0%} recharged)", charge));
+                        return;
+                    }
+
                     foreach (float downDegrees in new[] { 0f, 20f, 40f })
                     {
                         Vector3 dir = Quaternion.AngleAxis(downDegrees, right) * aim;
