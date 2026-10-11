@@ -6,7 +6,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,6 +18,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -232,16 +237,35 @@ public final class WorldBridge {
 			}
 
 			if (kind != null) {
-				// what the arrow would hit for here: ceil(speed x base damage), as Minecraft reckons it (a rocket: 0, it bursts)
+				// what the arrow would hit for here: ceil(speed x base damage), as Minecraft reckons it (a rocket: 0, it bursts);
+				// and the bow or crossbow that shot it, with its enchantments, and whether it burns: the host shoots it as that weapon
 				double damage = e instanceof AbstractArrow arrow ? Math.ceil(Math.min(arrow.getDeltaMovement().length() * ((AbstractArrowAccessor) arrow).mineheim$getBaseDamage(), 2.147483647E9)) : 0.0;
+				ItemStack weapon = e instanceof AbstractArrow arrow && arrow.getWeaponItem() != null ? arrow.getWeaponItem() : ItemStack.EMPTY;
 				b = b == null ? new StringBuilder("{\"t\":\"proj\",\"p\":[") : b.append(',');
-				b.append(String.format(Locale.ROOT, "[%d,\"%s\",%.3f,%.3f,%.3f,%.1f]", e.getId(), kind, e.getX(), e.getY(), e.getZ(), damage));
+				b.append(String.format(Locale.ROOT, "[%d,\"%s\",%.3f,%.3f,%.3f,%.1f,\"%s\",\"%s\",%d]", e.getId(), kind, e.getX(), e.getY(), e.getZ(), damage,
+					weapon.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(weapon.getItem()).getPath(), enchantments(weapon), e.isOnFire() ? 1 : 0));
 			}
 		}
 
 		if (b != null) {
 			MineHeim.events.accept(b.append("]}").toString());
 		}
+	}
+
+	/** An item's enchantments for the host, "sharpness:5,fire_aspect:2" ("" for none): its Valheim weapon gets them as upgrades and elements. */
+	public static String enchantments(final ItemStack stack) {
+		if (stack.isEmpty()) {
+			return "";
+		}
+
+		StringBuilder b = new StringBuilder();
+		for (Object2IntMap.Entry<Holder<Enchantment>> entry : stack.getEnchantments().entrySet()) {
+			String name = entry.getKey().getRegisteredName();
+			int colon = name.indexOf(':');
+			b.append(b.length() > 0 ? "," : "").append(colon >= 0 ? name.substring(colon + 1) : name).append(':').append(entry.getIntValue());
+		}
+
+		return b.toString();
 	}
 
 	/**

@@ -89,7 +89,8 @@ namespace MineHeim
                     OnExplosion(json);
                     return true;
                 case "melee":
-                    OnMelee(Messages.StringValue(json, "item", "diamond_sword"), Messages.DoubleValue(json, "dmg", -1));
+                    OnMelee(Messages.StringValue(json, "item", "diamond_sword"), Messages.DoubleValue(json, "dmg", -1),
+                        Messages.DoubleValue(json, "charge", 1), Messages.StringValue(json, "ench", ""));
                     return true;
                 case "chit":
                     Plugin.Mobs.OnCreatureHit(json);
@@ -330,7 +331,9 @@ namespace MineHeim
             return minecraftDamage < 0 ? fallback : (float)(minecraftDamage * MobBridge.Rate() * Plugin.WeaponDamageScale.Value);
         }
 
-        private void OnMelee(string item, double minecraftDamage)
+        private readonly List<KeyValuePair<Character, Vector3>> _targets = new List<KeyValuePair<Character, Vector3>>();
+
+        private void OnMelee(string item, double minecraftDamage, double charge, string enchantments)
         {
             Player player = Player.m_localPlayer;
             if (player == null || GameCamera.instance == null)
@@ -342,8 +345,28 @@ namespace MineHeim
             Vector3 eye = player.m_eye.position;
             Vector3 aim = GameCamera.instance.transform.forward;
             bool isTool = item.EndsWith("_pickaxe") || item.EndsWith("_axe");
-            // anything Steve swings hits the creatures in front of him, for what it deals in Minecraft (a fist 1, a diamond sword 7,
-            // times how far the swing had recharged); a pickaxe or axe that hits no creature works on rocks, ore and trees instead
+            SteveWeapons.Borrowed weapon = SteveWeapons.For(item, enchantments);
+            float tired = 1f;
+            if (weapon != null)
+            {
+                // the Viking's stamina pays for Steve's swing, as for his own (Creative skips it); without enough it lands weakly
+                float cost = SteveWeapons.StaminaCost(player, weapon);
+                if (cost > 0f && !player.HaveStamina(cost))
+                {
+                    tired = (float)WeaponMap.TiredFactor;
+                }
+
+                player.UseStamina(cost);
+                if (MeleeWithValheimStats(player, weapon, item, eye, aim, WeaponMap.Recharge(charge) * tired) || !isTool)
+                {
+                    return;
+                }
+            }
+
+            // the old way (Events.SteveWeaponStats off, or the game had no such weapon): anything Steve swings hits the creatures
+            // in front of him for what it deals in Minecraft (a fist 1, a diamond sword 7, times how far the swing had recharged)
+            // times the exchange rate; a pickaxe or axe that hits no creature works on rocks, ore and trees instead
+            if (weapon == null)
             {
                 int hurt = 0;
                 float damage = Dynamic(minecraftDamage, Plugin.MeleeDamage.Value);
@@ -442,20 +465,89 @@ namespace MineHeim
             }
 
             var tool = MakeHit(point, aim, 0f);
-            tool.m_toolTier = 4; // a diamond tool: nothing in the world is too hard for it
-            if (item.EndsWith("_pickaxe"))
+            bool pick = item.EndsWith("_pickaxe");
+            if (weapon != null)
             {
-                tool.m_damage.m_pickaxe = Plugin.ToolDamage.Value;
+                // the borrowed tool's own chop or pickaxe damage and tier: a stone pickaxe cannot mine what an antler pickaxe cannot
+                SteveWeapons.Fill(tool, weapon, player, WeaponMap.Recharge(charge) * tired, false);
+                tool.m_damage = new HitData.DamageTypes { m_pickaxe = pick ? tool.m_damage.m_pickaxe : 0f, m_chop = pick ? 0f : tool.m_damage.m_chop };
+                tool.m_pushForce = 0f;
+                player.RaiseSkill(pick ? Skills.SkillType.Pickaxes : Skills.SkillType.WoodCutting, 1f);
             }
-            else
+
+            if (tool.m_damage.m_pickaxe <= 0f && tool.m_damage.m_chop <= 0f)
             {
-                tool.m_damage.m_chop = Plugin.ToolDamage.Value;
+                tool.m_toolTier = 4; // the old way: a diamond tool, nothing in the world is too hard for it
+                if (pick)
+                {
+                    tool.m_damage.m_pickaxe = Plugin.ToolDamage.Value;
+                }
+                else
+                {
+                    tool.m_damage.m_chop = Plugin.ToolDamage.Value;
+                }
             }
 
             tool.m_attacker = player.GetZDOID();
             target2.Damage(tool);
             ToolHits++;
             Plugin.Log.LogInfo(item + " swing hit a " + target2.GetDestructibleType() + " at " + best.ToString("0.0") + " m");
+        }
+
+        /// <summary>
+        /// Steve's swing as the Valheim weapon it borrows: the creatures within Minecraft's reach and the weapon's arc; one of
+        /// them (the nearest) unless the weapon's attack hits all in its arc, then shared as Valheim shares it. True if it hit.
+        /// </summary>
+        private bool MeleeWithValheimStats(Player player, SteveWeapons.Borrowed weapon, string item, Vector3 eye, Vector3 aim, double factor)
+        {
+            _targets.Clear();
+            float minDot = Mathf.Cos(SteveWeapons.HalfArc(weapon) * Mathf.Deg2Rad);
+            float nearest = float.MaxValue;
+            foreach (Character c in new List<Character>(Character.GetAllCharacters()))
+            {
+                if (c == null || c == player || c.IsDead() || MobBridge.IsBody(c) || (c.IsTamed() && !c.IsPlayer()))
+                {
+                    continue; // (a Minecraft mob: Steve's hit lands on it in Minecraft itself; tamed animals are friends)
+                }
+
+                Vector3 target;
+                float d = DistanceTo(c, eye, out target);
+                if (d > Plugin.MeleeReach.Value || Vector3.Dot((target - eye) / Mathf.Max(d, 0.01f), aim) < minDot)
+                {
+                    continue;
+                }
+
+                if (SteveWeapons.MultiHit(weapon))
+                {
+                    _targets.Add(new KeyValuePair<Character, Vector3>(c, target));
+                }
+                else if (d < nearest)
+                {
+                    nearest = d;
+                    _targets.Clear();
+                    _targets.Add(new KeyValuePair<Character, Vector3>(c, target));
+                }
+            }
+
+            if (_targets.Count == 0)
+            {
+                return false;
+            }
+
+            double share = factor * WeaponMap.Split(_targets.Count, weapon.Attack != null && weapon.Attack.m_lowerDamagePerHit) * Plugin.WeaponDamageScale.Value;
+            float dealt = 0f;
+            foreach (KeyValuePair<Character, Vector3> t in _targets)
+            {
+                HitData hit = MakeHit(t.Value, new Vector3(aim.x, 0.1f, aim.z), 0f);
+                SteveWeapons.Fill(hit, weapon, player, share, true);
+                dealt = hit.GetTotalDamage();
+                t.Key.Damage(hit);
+            }
+
+            player.RaiseSkill(weapon.Skill, 1f);
+            Plugin.Log.LogInfo(string.Format("{0} swing as {1} (q{2}): {3} creature(s) hit for {4:0.0} each before resistances", item, weapon.Prefab,
+                weapon.Item.m_quality, _targets.Count, dealt));
+            return true;
         }
 
         // ------------------------------------------------------------------ projectiles
@@ -514,18 +606,38 @@ namespace MineHeim
 
                 Character victim = chosen.collider.GetComponentInParent<Character>();
                 Vector3 hitPoint = chosen.distance <= 0f ? before : chosen.point;
+                SteveWeapons.Borrowed bow = p.Kind == "arrow" && Player.m_localPlayer != null
+                    ? SteveWeapons.For(p.Weapon.Length > 0 ? p.Weapon : "bow", p.Enchantments) : null;
+                if (bow != null && bow.Weapon.Kind != WeaponKind.Bow && bow.Weapon.Kind != WeaponKind.Crossbow)
+                {
+                    bow = SteveWeapons.For("bow", p.Enchantments); // thrown from something else (a dispenser's arrow has no bow)
+                }
+
                 if (victim != null && !victim.IsDead())
                 {
                     HitData hit = MakeHit(hitPoint, seg, 12f);
-                    float damage = Dynamic(p.Damage, Plugin.ArrowDamage.Value);
-                    hit.m_damage.m_pierce = damage;
-                    if (Player.m_localPlayer != null)
+                    float damage;
+                    if (bow != null)
                     {
-                        hit.m_attacker = Player.m_localPlayer.GetZDOID();
+                        // the bow (and arrow) of the world's tier, as hard as Minecraft's bow was drawn (Power included)
+                        SteveWeapons.Fill(hit, bow, Player.m_localPlayer, WeaponMap.Draw(p.Damage) * Plugin.WeaponDamageScale.Value, true, p.Burning);
+                        hit.m_ranged = true;
+                        damage = hit.GetTotalDamage();
+                        Player.m_localPlayer.RaiseSkill(bow.Skill, 1f);
+                    }
+                    else
+                    {
+                        damage = Dynamic(p.Damage, Plugin.ArrowDamage.Value);
+                        hit.m_damage.m_pierce = damage;
+                        if (Player.m_localPlayer != null)
+                        {
+                            hit.m_attacker = Player.m_localPlayer.GetZDOID();
+                        }
                     }
 
                     victim.Damage(hit);
-                    Plugin.Log.LogInfo(string.Format("arrow hit {0} for {1:0.0} ({2:0.0} in Minecraft)", victim.m_name, damage, p.Damage));
+                    Plugin.Log.LogInfo(string.Format("arrow hit {0} for {1:0.0} ({2:0.0} in Minecraft{3})", victim.m_name, damage, p.Damage,
+                        bow != null ? ", as " + bow.Prefab + " + " + (bow.Ammo != null ? bow.Ammo.m_shared.m_name : "no arrow") : ""));
                 }
                 else if (p.Kind == "firework")
                 {

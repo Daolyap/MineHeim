@@ -29,8 +29,110 @@ namespace MineHeim.Core.Tests
             SteveModelSeamsMatchTheSkinLayout();
             SteveModelOuterLayerPerPixel();
             SteveAnimation();
+            SteveWeaponsBorrowValheimStats();
+            SteveWeaponBalance();
             Console.WriteLine(_failures == 0 ? "ALL PASS" : _failures + " FAILURE(S)");
             return _failures == 0 ? 0 : 1;
+        }
+
+        private static void SteveWeaponsBorrowValheimStats()
+        {
+            // materials: their own tier; netherite never below Plains and keeps up with the world
+            Check(WeaponMap.Resolve("wooden_sword", 6).Prefab == "KnifeFlint" && WeaponMap.Resolve("wooden_sword", 6).Tier == 0, "wooden sword = Meadows whatever the world");
+            Check(WeaponMap.Resolve("minecraft:copper_sword", 0).Prefab == "SwordBronze", "copper = Black Forest (bronze)");
+            Check(WeaponMap.Resolve("iron_sword", 0).Prefab == "SwordIron" && WeaponMap.Resolve("iron_axe", 0).Prefab == "AxeIron", "iron = Swamp");
+            Check(WeaponMap.Resolve("diamond_sword", 0).Prefab == "SwordSilver", "diamond = Mountains (Silver crosses as diamond)");
+            Check(WeaponMap.Resolve("netherite_sword", 0).Tier == 4 && WeaponMap.Resolve("netherite_sword", 6).Prefab == "SwordNiedhogg", "netherite = Plains, or the world's tier");
+            Check(WeaponMap.Resolve("diamond_pickaxe", 0).Kind == WeaponKind.Pickaxe && WeaponMap.Resolve("stone_axe", 0).Kind == WeaponKind.Axe, "pickaxe is not an axe");
+            Check(WeaponMap.Resolve("iron_spear", 0).Prefab == "SpearElderbark", "Minecraft's spears are spears");
+            // no material: the world's tier
+            Check(WeaponMap.Resolve("mace", 0).Prefab == "Club" && WeaponMap.Resolve("mace", 4).Prefab == "MaceNeedle", "mace follows the world");
+            Check(WeaponMap.Resolve("trident", 3).Kind == WeaponKind.Spear && WeaponMap.Resolve("trident", 3).Tier == 3, "trident = spear of the world's tier");
+            Check(WeaponMap.Resolve("bow", 2).Prefab == "BowHuntsman" && WeaponMap.Resolve("bow", 2).Ammo == "ArrowBronze", "bow + arrow of the world's tier");
+            Check(WeaponMap.Resolve("crossbow", 5).Prefab == "CrossbowArbalest" && WeaponMap.Resolve("crossbow", 5).Ammo == "BoltCarapace", "crossbow from the Mistlands");
+            // fists and everything else
+            foreach (string other in new[] { "", "air", "cobblestone", "stick", "iron_shovel", "diamond_hoe", "golden_apple" })
+            {
+                Check(WeaponMap.Resolve(other, 6).Kind == WeaponKind.Unarmed && WeaponMap.Resolve(other, 6).Prefab == "", "unarmed: '" + other + "'");
+            }
+
+            // ladders: every kind has a prefab for every tier
+            foreach (WeaponKind k in new[] { WeaponKind.Sword, WeaponKind.Axe, WeaponKind.Pickaxe, WeaponKind.Mace, WeaponKind.Spear, WeaponKind.Bow, WeaponKind.Crossbow })
+            {
+                Check(WeaponMap.Ladder(k).Length == WeaponMap.MaxTier + 1, "ladder " + k);
+            }
+
+            // a prefab the game lacks steps down the ladder
+            Check(WeaponMap.Available(WeaponKind.Mace, 6, p => p == "MaceSilver" || p == "Club") == "MaceSilver", "missing prefab: next lower tier");
+            Check(WeaponMap.Available(WeaponKind.Mace, 6, p => false) == "", "nothing at all: empty");
+
+            // the world's tier from the bosses beaten (the highest counts)
+            Check(WeaponMap.WorldTier(k => false) == 0, "fresh world = Meadows");
+            Check(WeaponMap.WorldTier(k => k == "defeated_eikthyr" || k == "defeated_gdking") == 2, "Elder beaten = Swamp");
+            Check(WeaponMap.WorldTier(k => k == "defeated_queen") == 6, "Queen beaten = Ashlands");
+
+            // enchantments
+            var e = new Enchantments("minecraft:sharpness:5,fire_aspect:2, smite:x, knockback:1");
+            Check(e.Get("sharpness") == 5 && e.Get("fire_aspect") == 2 && e.Get("smite") == 0 && e.Get("unknown") == 0, "enchantments parse");
+            Check(WeaponMap.Quality(Enchantments.None, 4) == 1 && WeaponMap.Quality(new Enchantments("sharpness:1"), 4) == 2 &&
+                  WeaponMap.Quality(new Enchantments("sharpness:3"), 4) == 3 && WeaponMap.Quality(e, 4) == 4 && WeaponMap.Quality(e, 1) == 1, "Sharpness = quality, capped");
+            Check(Math.Abs(WeaponMap.ElementShare(2) - 0.4) < 1e-9 && Math.Abs(WeaponMap.PushFactor(e) - 1.5) < 1e-9, "element share, knockback");
+            Check(new Enchantments("b:1,a:2").Key == new Enchantments("a:2, b:1").Key, "enchantment cache key is order-free");
+
+            // the arrow message: the bow, its enchantments and the burning flag are optional
+            var pl = Messages.Projectiles("{\"t\":\"proj\",\"p\":[[12,\"arrow\",1.0,2.0,3.0,9.0,\"crossbow\",\"piercing:1,quick_charge:2\",1],[13,\"arrow\",0,0,0,6.0]]}");
+            Check(pl.Count == 2 && pl[0].Weapon == "crossbow" && pl[0].Enchantments == "piercing:1,quick_charge:2" && pl[0].Burning && pl[0].Damage == 9 &&
+                  pl[1].Weapon == "" && !pl[1].Burning, "projectile weapon parse");
+            Check(Math.Abs(WeaponMap.Draw(6) - 1) < 1e-9 && WeaponMap.Draw(9) == 1.5 && WeaponMap.Draw(30) == 1.5 && WeaponMap.Draw(0) == 0.1 && WeaponMap.Draw(-1) == 1, "bow draw");
+        }
+
+        /// <summary>
+        /// Balance: Steve's tier-N weapon IS the Valheim tier-N weapon at a full swing (the same prefab, factor 1), and spamming
+        /// is worse than timing swings: less damage per second and much more stamina per point of damage.
+        /// </summary>
+        private static void SteveWeaponBalance()
+        {
+            Check(Math.Abs(WeaponMap.Recharge(1) - 1) < 1e-9 && Math.Abs(WeaponMap.Recharge(0) - 0.2) < 1e-9 && WeaponMap.Recharge(2) == 1, "recharge as Minecraft's");
+            for (int tier = 0; tier <= WeaponMap.MaxTier; tier++)
+            {
+                string valheimSword = WeaponMap.Ladder(WeaponKind.Sword)[tier];
+                string netherite = WeaponMap.Resolve("netherite_sword", tier).Prefab;
+                Check(netherite == WeaponMap.Ladder(WeaponKind.Sword)[Math.Max(4, tier)] && (tier < 4 || netherite == valheimSword),
+                    "netherite: a Plains sword, or the Valheim sword of a tier-" + tier + " world");
+            }
+
+            // a 5-second fight with a 100-stamina Viking (Valheim pauses regeneration while attacking): a Minecraft sword recharges
+            // in 0.625 s, a swing costs Valheim's ~12 stamina (no skill). Timed swings beat spamming at any click rate.
+            const double rechargeSeconds = 0.625, stamina = 12, pool = 100, seconds = 5;
+            double timed = Fight(1 / rechargeSeconds, rechargeSeconds, stamina, pool, seconds);
+            foreach (double clicksPerSecond in new[] { 3.0, 4.0, 8.0, 12.0, 20.0 })
+            {
+                double spam = Fight(clicksPerSecond, rechargeSeconds, stamina, pool, seconds);
+                Check(spam < timed, string.Format(CultureInfo.InvariantCulture, "spam at {0} clicks/s deals {1:0.00} full hits in {2} s, timed swings {3:0.00}",
+                    clicksPerSecond, spam, seconds, timed));
+            }
+
+            // a 100-stamina Viking: spamming runs dry in a few seconds; a tired swing is a fifth
+            Check(100 / (WeaponMap.StaminaCost(stamina, 0) * 8) < 1.1 && WeaponMap.TiredFactor <= 0.2, "spam runs out of stamina");
+            Check(WeaponMap.StaminaCost(stamina, 1) < WeaponMap.StaminaCost(stamina, 0) && Math.Abs(WeaponMap.StaminaCost(stamina, 1) - stamina * 0.67) < 1e-9, "skill lowers stamina as Valheim's");
+            // several targets: Valheim's own share
+            Check(WeaponMap.Split(1, true) == 1 && Math.Abs(WeaponMap.Split(2, true) - 1 / 1.5) < 1e-9 && WeaponMap.Split(3, false) == 1, "multi-hit share");
+        }
+
+        /// <summary>Damage (in full hits) of clicking at `rate` for `seconds`, with Minecraft's recharge and Valheim's stamina.</summary>
+        private static double Fight(double rate, double rechargeSeconds, double staminaPerSwing, double pool, double seconds)
+        {
+            double charge = Math.Min(1, 1 / rate / rechargeSeconds), total = 0, left = pool;
+            int swings = (int)Math.Floor(rate * seconds);
+            double cost = WeaponMap.StaminaCost(staminaPerSwing, 0);
+            for (int i = 0; i < swings; i++)
+            {
+                bool tired = left < cost;
+                left = Math.Max(0, left - cost);
+                total += WeaponMap.Recharge(charge) * (tired ? WeaponMap.TiredFactor : 1);
+            }
+
+            return total;
         }
 
         private static void Check(bool ok, string what)

@@ -2,6 +2,7 @@ package dev.daolyap.mineheim.client;
 
 import com.google.gson.JsonObject;
 import dev.daolyap.mineheim.MineHeim;
+import dev.daolyap.mineheim.WorldBridge;
 import dev.daolyap.mineheim.client.mixin.KeyMappingAccessor;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -72,7 +73,8 @@ public final class ClientInput {
 		String item = BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).getPath();
 		float charge = player.getAttackStrengthScale(0.5F);
 		double damage = attackDamage(player) * (0.2 + 0.8 * charge * charge);
-		MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"melee\",\"item\":\"%s\",\"dmg\":%.2f,\"charge\":%.2f}", item, damage, charge));
+		MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"melee\",\"item\":\"%s\",\"dmg\":%.2f,\"charge\":%.2f,\"ench\":\"%s\"}", item, damage, charge,
+			WorldBridge.enchantments(player.getMainHandItem())));
 	}
 
 	private static void click(final KeyMapping key) {

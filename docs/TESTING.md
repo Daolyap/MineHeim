@@ -27,3 +27,14 @@ L6, and B, F, M, I, W, N, E, P (not reached).
 | X3 | Creative, F7 on: let a zombie reach Steve | It ignores Steve (Creative is untouchable) |
 | X4 | Survival, F7 off and on | Mobs hunt and hurt you in both |
 | X5 | Creative, F7 on -> off -> on | The Creative kit and flight are still there (switching does not wipe or refill the inventory) |
+| D1 | Load a world, look in `LogOutput.log` | A line `steve weapons (world at ...)` lists a prefab for every item; send it if any says `(none)` or `[wanted ...]` |
+| D2 | Survival, punch a Greyling or a deer as Steve | Small damage (the Viking's fist), not 6+; it does not grow after eating |
+| D3 | Timed full swings vs. spam-clicking with a sword on a Greydwarf | Spam drains the stamina bar within seconds and then barely hurts; timed swings kill faster |
+| D4 | An iron sword vs. a Valheim iron sword on the same creature (Viking mode) | About the same damage per full swing |
+| D5 | Mace on a blob (Swamp) vs. a sword | The mace does far more (blobs are weak to blunt, resist slash) |
+| D6 | Hit a group of 3 creatures with a sword, then with an axe | Each weapon hits as its Valheim twin (a sword's horizontal swing reaches several; check the log line `... creature(s) hit`) |
+| D7 | Several swings | The Viking's Swords (or Axes, Clubs, Spears, Unarmed) skill rises |
+| D8 | Stone pickaxe on copper ore, then iron pickaxe on silver | The stone (antler-tier) pickaxe mines copper; silver needs the iron pickaxe (or better) |
+| D9 | Bow at full draw vs. a quick tap | The full draw hurts far more; Bows skill rises on hits |
+| D10 | Fire Aspect / Smite sword on a Draugr or Skeleton (if you can get one: Creative inventory) | Fire sets it burning; Smite hurts undead much more |
+| D11 | Set `Events.SteveWeaponStats = false` | The old damage comes back |

@@ -35,8 +35,9 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Shield.ReflectFraction` | 0.5 | share of the blocked damage thrown back at the attacker |
 | `Shield.StaggerAttacker` | on | every block is a perfect parry: the attacker staggers |
 | **Events** (Minecraft acting on Valheim) | | |
-| `Events.WeaponPointDamage` | 6 | Valheim damage per Minecraft damage point, at least (the Viking's max health / 20 when higher): a diamond sword's 7 is 42 |
-| `Events.WeaponDamageScale` | 1 | Minecraft damage on Valheim creatures = Minecraft damage x the rate above x this |
+| `Events.SteveWeaponStats` | on | Steve's weapons fight as real Valheim weapons (read from the game, so patches carry over). Wooden, stone, golden = Meadows; copper = Black Forest; iron = Swamp; diamond = Mountains; netherite = Plains, or the world's tier once later bosses are beaten. Mace, trident, bow and crossbow follow the last boss beaten. Valheim's damage types, skill levels (raised by hitting), stamina per swing, stagger, knockback, backstab and tool tiers apply; Minecraft's recharge scales each swing, and a swing without stamina is a fifth. A fist is the Viking's fist. Sharpness/Power raise the weapon's quality; Fire Aspect/Flame add fire, Smite spirit, Bane of Arthropods poison. The table this world uses is in `LogOutput.log` (`steve weapons (world at ...)`). Off: the old way below |
+| `Events.WeaponPointDamage` | 6 | the old way, and a held item with no Valheim weapon: Valheim damage per Minecraft damage point, at least (the Viking's max health / 20 when higher) |
+| `Events.WeaponDamageScale` | 1 | a multiplier on everything Steve deals to Valheim creatures (both ways) |
 | `Events.WardsBlockExplosions` | on | explosions spare buildings and the ground inside an active ward (creatures are still hurt) |
 | `Events.MinecraftDamageShare` | 1 | a Minecraft mob's hit takes this times its share of Steve's 20 from the Viking's max health (0 = harmless) |
 | `Events.ExplosionDamage`, `ExplosionPush`, `ExplosionReach` | 60, 60, 1.6 | a Minecraft explosion's damage and knockback on creatures, and metres of reach per block of radius |

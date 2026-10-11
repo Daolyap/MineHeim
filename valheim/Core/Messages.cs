@@ -221,12 +221,18 @@ namespace MineHeim.Core
             public int Id;
             public string Kind;
             public double X, Y, Z, Damage;
+            /// <summary>The bow or crossbow that shot it ("" if Minecraft did not say), its enchantments, and whether it burns (Flame).</summary>
+            public string Weapon, Enchantments;
+            public bool Burning;
         }
 
         private static readonly System.Text.RegularExpressions.Regex ProjectileRx = new System.Text.RegularExpressions.Regex(
-            @"\[(-?\d+),""(\w+)"",(-?[0-9.eE+-]+),(-?[0-9.eE+-]+),(-?[0-9.eE+-]+)(?:,(-?[0-9.eE+-]+))?\]");
+            @"\[(-?\d+),""(\w+)"",(-?[0-9.eE+-]+),(-?[0-9.eE+-]+),(-?[0-9.eE+-]+)(?:,(-?[0-9.eE+-]+))?(?:,""([\w:]*)"",""([\w:,]*)"",([01]))?\]");
 
-        /// <summary>[[id,"arrow",x,y,z,damage],...]: the damage (what the arrow would deal in Minecraft) is -1 if Minecraft did not say.</summary>
+        /// <summary>
+        /// [[id,"arrow",x,y,z,damage,"bow","power:3",burning 0|1],...]: the damage (what the arrow would deal in Minecraft) is -1
+        /// if Minecraft did not say; the weapon, its enchantments and the burning flag are optional.
+        /// </summary>
         public static System.Collections.Generic.List<Projectile> Projectiles(string json)
         {
             var list = new System.Collections.Generic.List<Projectile>();
@@ -240,6 +246,9 @@ namespace MineHeim.Core
                     Y = double.Parse(m.Groups[4].Value, Inv),
                     Z = double.Parse(m.Groups[5].Value, Inv),
                     Damage = m.Groups[6].Success ? double.Parse(m.Groups[6].Value, Inv) : -1,
+                    Weapon = m.Groups[7].Success ? m.Groups[7].Value : "",
+                    Enchantments = m.Groups[8].Success ? m.Groups[8].Value : "",
+                    Burning = m.Groups[9].Success && m.Groups[9].Value == "1",
                 });
             }
 

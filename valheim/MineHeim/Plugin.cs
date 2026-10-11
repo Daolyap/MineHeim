@@ -66,7 +66,7 @@ namespace MineHeim
         internal static ConfigEntry<string> LaunchCommand;
         internal static ConfigEntry<KeyCode> GameModeKey, StatusKey, AvatarKey;
         internal static ConfigEntry<float> WeaponDamageScale, MobRadius, WeaponPointDamage;
-        internal static ConfigEntry<bool> CreativeInvulnerable, WardsBlockExplosions, PredictMotion;
+        internal static ConfigEntry<bool> CreativeInvulnerable, WardsBlockExplosions, PredictMotion, SteveWeaponStats;
         internal static ConfigEntry<bool> NetherEnabled, NetherAshGround, NetherWeather, NetherMapPin;
         internal static ConfigEntry<float> NetherMaxRadius, NetherGrowPerMinute, NetherHealPerMinute;
         internal static ConfigEntry<int> NetherMobCap, NetherSpawnSeconds;
@@ -160,6 +160,12 @@ namespace MineHeim
             ExplosionPush = Config.Bind("Events", "ExplosionPush", 60f, "Knockback force of a Minecraft explosion at its centre.");
             ExplosionReach = Config.Bind("Events", "ExplosionReach", 1.6f, "Metres of reach per block of explosion radius (TNT has radius 4).");
             HurtPlayer = Config.Bind("Events", "HurtPlayer", true, "Minecraft explosions hurt the Viking too.");
+            SteveWeaponStats = Config.Bind("Events", "SteveWeaponStats", true,
+                "Steve's weapons fight as real Valheim weapons of their tier: wooden/stone/golden = Meadows, copper = Black Forest, iron = Swamp, " +
+                "diamond = Mountains, netherite = Plains or the world's tier if higher; mace, trident, bow and crossbow keep up with the bosses beaten. " +
+                "Valheim's damage types, skills, stamina, stagger and knockback apply; Minecraft's recharge scales each swing, and a fist is the Viking's fist. " +
+                "Enchantments: Sharpness/Power raise the weapon's quality, Fire Aspect/Flame add fire, Smite spirit, Bane of Arthropods poison. " +
+                "Off: the old way (Minecraft damage times WeaponPointDamage).");
             WeaponPointDamage = Config.Bind("Events", "WeaponPointDamage", 6f,
                 "Valheim damage per point of Minecraft weapon damage, at least: the rate is the Viking's max health / 20 when that is higher (it grows with food " +
                 "and progression). A fully charged diamond sword (7) deals 42, a fist (1) 6.");

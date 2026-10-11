@@ -27,7 +27,7 @@ namespace MineHeim.Core
         public const string Defaults =
             "Wood=oak_log, FineWood=birch_log, RoundLog=spruce_log, ElderBark=dark_oak_log, Stone=cobblestone, Flint=flint, Resin=resin_clump, " +
             "LeatherScraps=leather, DeerHide=rabbit_hide, Feathers=feather, BoneFragments=bone, Coal=coal, CopperOre=raw_copper, Copper=copper_ingot, " +
-            "IronScrap=raw_iron, Iron=iron_ingot, Obsidian=obsidian, Crystal=amethyst_shard, BlackMetalScrap=netherite_scrap, BlackMetal=netherite_ingot, " +
+            "IronScrap=raw_iron, Iron=iron_ingot, Silver=diamond, Obsidian=obsidian, Crystal=amethyst_shard, BlackMetalScrap=netherite_scrap, BlackMetal=netherite_ingot, " +
             "Raspberry=sweet_berries, Blueberries=glow_berries, Mushroom=red_mushroom, MushroomYellow=brown_mushroom, Carrot=carrot, Turnip=beetroot, " +
             "Barley=wheat, Honey=honey_bottle, Dandelion=dandelion, RawMeat=porkchop, DeerMeat=beef, CookedMeat=cooked_porkchop, " +
             "CookedDeerMeat=cooked_beef, FishRaw=cod, FishCooked=cooked_cod, Entrails=rotten_flesh, Bread=bread, Coins=gold_nugget, Ruby=emerald, " +
