@@ -117,6 +117,13 @@ public class MineHeimClient implements ClientModInitializer {
 			// the host moves the player: it must always be able to fly, or Survival's gravity and fall damage would fight the host
 			if (MineHeim.active) {
 				for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+					// Creative is Steve's: while the host's player is the Viking (Minecraft mode off) he plays Survival, so
+					// Minecraft's mobs see him, hunt him and fight back when he hits them (no mob ever targets a Creative player)
+					GameType wanted = gameMode.equals("creative") && HostView.steve ? GameType.CREATIVE : GameType.SURVIVAL;
+					if (setupIn <= 0 && p.gameMode() != wanted) {
+						p.setGameMode(wanted);
+					}
+
 					if (!p.getAbilities().mayfly || !p.getAbilities().flying) {
 						p.getAbilities().mayfly = true;
 						p.getAbilities().flying = true;

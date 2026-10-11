@@ -27,7 +27,8 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Steve.Skin` | Steve | Steve: classic Steve. Account: your Minecraft account's skin (fetched from Mojang when Minecraft starts). File: a skin PNG of your own |
 | `Steve.SkinFile`, `SkinSlimArms` | empty, off | with `Skin = File`: the PNG's path (64x64 or 64x32, write `/`), and whether it is for the slim "Alex" arms |
 | `Steve.HideViking` | on | in Minecraft mode, hide the Viking's body (not his held items or lights) |
-| `Steve.CreativeInvulnerable` | on | in Creative, as Steve: no damage and no stamina used |
+| `Steve.HideValheimHotbar` | on | in Minecraft mode, hide Valheim's hotbar (Minecraft's is the one in use); health, stamina and food stay |
+| `Steve.CreativeInvulnerable` | on | in Creative, as Steve: no damage and no stamina used. Creative is Steve's only: as the Viking (Minecraft mode off) Minecraft treats you as Survival, so its mobs hunt you and fight back |
 | **Shield** | | |
 | `Shield.Enabled` | on | a raised Minecraft shield blocks Valheim attacks |
 | `Shield.BlockFraction` | 1 | share of a blockable hit from the front that it stops (1 = all, no stamina) |

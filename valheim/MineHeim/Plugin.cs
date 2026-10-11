@@ -25,7 +25,7 @@ namespace MineHeim
         internal static ConfigEntry<KeyCode> PillarKey;
         internal static ConfigEntry<KeyCode> ToggleKey;
         internal static ConfigEntry<bool> StartInMinecraftMode;
-        internal static ConfigEntry<bool> HideViking;
+        internal static ConfigEntry<bool> HideViking, HideValheimHotbar;
         internal static ConfigEntry<float> ExplosionDamage, ExplosionPush, ExplosionReach, MeleeDamage, MeleeReach, ToolDamage, ArrowDamage;
         internal static ConfigEntry<bool> HurtPlayer;
         internal static ConfigEntry<SteveMode> GameMode;
@@ -104,6 +104,8 @@ namespace MineHeim
                 "go to Minecraft (break, place, pick, hotbar). Off, you are the Viking again: Valheim's own body, hotbar and controls (Minecraft's blocks, mobs and items stay in the world).");
             HideViking = Config.Bind("Steve", "HideViking", true,
                 "In Minecraft mode, hide the Viking's body (not his held items or lights): Steve stands where he stands.");
+            HideValheimHotbar = Config.Bind("Steve", "HideValheimHotbar", true,
+                "In Minecraft mode, hide Valheim's hotbar (Minecraft's is the one in use). Health, stamina and food stay.");
             SteveAvatarMode = Config.Bind("Steve", "Avatar", AvatarMode.Native,
                 "Who draws Steve. Native: Valheim, on the Viking in the same frame, so he never trails behind or doubles up when you run or turn " +
                 "(no held item or armour on him yet). Minecraft: Minecraft's own picture of him, with his held item and armour, a frame or two late.");

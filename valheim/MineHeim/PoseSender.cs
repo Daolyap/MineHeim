@@ -68,6 +68,39 @@ namespace MineHeim
         internal static int VikingHidden; // renderers hidden right now (status5)
         private float _nextVikingCheck;
 
+        private Hud _hotbarHud;
+        private HotkeyBar[] _hotbars;
+        private bool _hotbarsHidden;
+
+        /// <summary>
+        /// In Minecraft mode Steve's hotbar is Minecraft's: Valheim's own (HotkeyBar) is hidden, health, stamina and food stay.
+        /// The bars are switched off rather than faded so their number keys are not drawn as Valheim's either.
+        /// </summary>
+        private void UpdateValheimHotbar(Player player)
+        {
+            bool hide = player != null && Plugin.HideValheimHotbar.Value && Link.Connected && InputBridge.McMode;
+            if (Hud.instance != _hotbarHud)
+            {
+                _hotbarHud = Hud.instance;
+                _hotbars = _hotbarHud != null ? _hotbarHud.GetComponentsInChildren<HotkeyBar>(true) : null;
+                _hotbarsHidden = false;
+            }
+
+            if (_hotbars == null || hide == _hotbarsHidden)
+            {
+                return;
+            }
+
+            _hotbarsHidden = hide;
+            foreach (HotkeyBar bar in _hotbars)
+            {
+                if (bar != null)
+                {
+                    bar.gameObject.SetActive(!hide);
+                }
+            }
+        }
+
         private void UpdateVikingVisibility(Player player)
         {
             if (Time.unscaledTime < _nextVikingCheck)
@@ -275,6 +308,7 @@ namespace MineHeim
             ScreenBridge.Poll();
             MinecraftLauncher.Tick();
             UpdateVikingVisibility(player);
+            UpdateValheimHotbar(player);
             Flight.Tick(player);
             Plugin.Lights.Tick(player, yOffset);
             Plugin.Mobs.Tick(player, yOffset);
