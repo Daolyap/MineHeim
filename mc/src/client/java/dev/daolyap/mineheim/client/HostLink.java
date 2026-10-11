@@ -134,7 +134,7 @@ public final class HostLink extends WebSocketServer {
 				case "mhit" -> Creatures.hitMob(m.get("id").getAsInt(), m.get("amount").getAsFloat(), m.has("by") ? m.get("by").getAsInt() : -1,
 					m.has("player") && m.get("player").getAsBoolean());
 				case "mobfight" -> Creatures.fight = m.get("on").getAsBoolean();
-				case "skinreq" -> SkinSender.request(m.has("mode") ? m.get("mode").getAsString() : "steve");
+				case "skinreq" -> SkinSender.request(m.has("mode") ? m.get("mode").getAsString() : "steve", m.has("herobrine") && m.get("herobrine").getAsBoolean());
 				case "vstats" -> MineHeimClient.vikingStats(m.get("hp").getAsFloat(), m.get("food").getAsInt());
 				case "projhit" -> {
 					JsonArray at = m.getAsJsonArray("pos");

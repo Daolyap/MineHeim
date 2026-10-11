@@ -36,6 +36,9 @@ namespace MineHeim
         private static Material _material;
         private static Texture2D _skin;
         private static Color32[] _pixels;
+        /// <summary>Herobrine's glowing eyes (Steve.HerobrineEyes): two unlit quads on the face, shown while the skin has his eyes.</summary>
+        private static MeshRenderer _eyes;
+        private static bool _eyesOn;
         private static bool _slim, _meshDirty = true;
 
         private static readonly SteveModel.WalkCycle Walk = new SteveModel.WalkCycle();
@@ -78,14 +81,37 @@ namespace MineHeim
         internal static void RequestSkin()
         {
             Plugin.SkinChoice choice = Plugin.SteveSkin.Value;
+            // Minecraft's own model wears classic Steve unless the account's skin was chosen; Herobrine's eyes go on it as here
+            string herobrine = ",\"herobrine\":" + (Herobrine(choice != Plugin.SkinChoice.Account) ? "true" : "false") + "}";
             if (choice == Plugin.SkinChoice.File)
             {
-                Link.Send("{\"t\":\"skinreq\",\"mode\":\"steve\"}"); // Minecraft's own model (Steve.Avatar = Minecraft) stays Steve
+                Link.Send("{\"t\":\"skinreq\",\"mode\":\"steve\"" + herobrine); // Minecraft's own model (Steve.Avatar = Minecraft) stays Steve
                 LoadSkinFile(Plugin.SteveSkinFile.Value, Plugin.SteveSkinSlim.Value);
                 return;
             }
 
-            Link.Send("{\"t\":\"skinreq\",\"mode\":\"" + (choice == Plugin.SkinChoice.Account ? "account" : "steve") + "\"}");
+            Link.Send("{\"t\":\"skinreq\",\"mode\":\"" + (choice == Plugin.SkinChoice.Account ? "account" : "steve") + "\"" + herobrine);
+        }
+
+        /// <summary>Steve.HerobrineEyes for a skin: `classic` is classic Steve (Minecraft's default, or the placeholder).</summary>
+        private static bool Herobrine(bool classic)
+        {
+            Plugin.HerobrineMode mode = Plugin.HerobrineEyes.Value;
+            return mode == Plugin.HerobrineMode.Always || (mode == Plugin.HerobrineMode.ClassicSteveOnly && classic);
+        }
+
+        /// <summary>Herobrine's eyes: the classic eye pixels white (Unity's pixel rows run bottom-up).</summary>
+        private static void WhitenEyes(Texture2D texture)
+        {
+            Color32[] pixels = texture.GetPixels32();
+            int w = texture.width, h = texture.height;
+            for (int i = 0; i < SteveModel.EyePixels.Length; i += 2)
+            {
+                pixels[(h - 1 - SteveModel.EyePixels[i + 1]) * w + SteveModel.EyePixels[i]] = new Color32(255, 255, 255, 255);
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false);
         }
 
         /// <summary>{"t":"skin","png":base64,"slim":bool,"src":"steve|account","err":why}</summary>
@@ -154,6 +180,12 @@ namespace MineHeim
                 return;
             }
 
+            _eyesOn = Herobrine(source == "steve");
+            if (_eyesOn)
+            {
+                WhitenEyes(texture);
+            }
+
             UseTexture(texture, slim);
             SkinSource = source;
             Plugin.Log.LogInfo("steve skin: " + source + (slim ? " (slim arms)" : "") + ", " + texture.width + "x" + texture.height);
@@ -190,6 +222,12 @@ namespace MineHeim
             var texture = new Texture2D(64, 64, TextureFormat.RGBA32, false);
             texture.SetPixels32(colors);
             texture.Apply(false);
+            _eyesOn = Herobrine(true);
+            if (_eyesOn)
+            {
+                WhitenEyes(texture);
+            }
+
             UseTexture(texture, false);
         }
 
@@ -230,6 +268,49 @@ namespace MineHeim
 
             _meshDirty = true;
             _shadowMode = ShadowCastingMode.On;
+            BuildEyes(layer);
+        }
+
+        /// <summary>Herobrine's eyes glow: white, unlit (bright at night too), a little over 1 so the bloom catches them.</summary>
+        private static void BuildEyes(int layer)
+        {
+            Shader unlit = null;
+            foreach (string name in new[] { "Unlit/Color", "Sprites/Default", "Hidden/Internal-Colored" })
+            {
+                unlit = Shader.Find(name);
+                if (unlit != null && unlit.isSupported)
+                {
+                    break;
+                }
+
+                unlit = null;
+            }
+
+            if (unlit == null)
+            {
+                Plugin.Log.LogInfo("steve: no unlit shader for Herobrine's glowing eyes (they are still white)");
+                return;
+            }
+
+            var go = new GameObject("Herobrine eyes") { layer = layer };
+            go.transform.SetParent(Parts[(int)SteveModel.Part.Head], false);
+            SteveModel.Mesh m = SteveModel.EyeGlow();
+            var vertices = new List<Vector3>();
+            for (int i = 0; i < m.VertexCount; i++)
+            {
+                vertices.Add(new Vector3(m.Positions[i * 3], m.Positions[i * 3 + 1], m.Positions[i * 3 + 2]));
+            }
+
+            var mesh = new Mesh { name = "Herobrine eyes" };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(m.Triangles, 0);
+            mesh.RecalculateBounds();
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            _eyes = go.AddComponent<MeshRenderer>();
+            _eyes.sharedMaterial = new Material(unlit) { name = "MineHeim Herobrine eyes", color = new Color(1.6f, 1.6f, 1.6f, 1f) };
+            _eyes.shadowCastingMode = ShadowCastingMode.Off;
+            _eyes.receiveShadows = false;
+            _eyes.enabled = _eyesOn;
         }
 
         /// <summary>
@@ -448,6 +529,11 @@ namespace MineHeim
             float distance = PoseSender.CameraDistance();
             bool inside = (distance >= 0f && distance <= 0.01f) || (cam.transform.position - head).sqrMagnitude < 0.45f * 0.45f;
             ShadowCastingMode mode = inside ? ShadowCastingMode.ShadowsOnly : ShadowCastingMode.On;
+            if (_eyes != null && _eyes.enabled != (_eyesOn && !inside))
+            {
+                _eyes.enabled = _eyesOn && !inside;
+            }
+
             if (mode != _shadowMode)
             {
                 _shadowMode = mode;

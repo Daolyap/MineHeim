@@ -181,6 +181,33 @@ namespace MineHeim.Core
 
         [ThreadStatic] private static Func<int, int, bool> _opaque;
 
+        // ------------------------------------------------------------------ Herobrine
+
+        /// <summary>
+        /// The eye pixels of the classic skin layout (x, y in skin pixels from the top left): on the face (8..15, 8..15),
+        /// row 12, the white and the pupil of each eye. Herobrine's are all white.
+        /// </summary>
+        public static readonly int[] EyePixels = { 9, 12, 10, 12, 13, 12, 14, 12 };
+
+        /// <summary>
+        /// Two small quads just in front of the face over the eyes (head part space, like Build(Head)), for a glow that
+        /// does not depend on the light: each eye is two pixels wide and one high.
+        /// </summary>
+        public static Mesh EyeGlow()
+        {
+            var m = new Mesh();
+            const float z = 4.05f; // just off the face (the hat layer, when there is one, is at 4.5)
+            for (int eye = 0; eye < 2; eye++)
+            {
+                // skin column px on the face is model x = 4 - (px - 8): the face is seen from the front, mirrored
+                float xLeft = 4f - (EyePixels[eye * 4] - 8), xRight = xLeft - 2f;
+                float yTop = 8f - (EyePixels[eye * 4 + 1] - 8), yBottom = yTop - 1f;
+                Quad(m, xLeft, yTop, z, xRight, yTop, z, xLeft, yBottom, z, 0f, 0f, 1f, 1f, 0, 0, 1, 1, 1, 1);
+            }
+
+            return m;
+        }
+
         /// <summary>A whole face, or (the outer layer) one square per opaque pixel of its texture rectangle.</summary>
         private static void Face(Mesh m, bool perPixel,
             float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz, float dx, float dy, float dz,

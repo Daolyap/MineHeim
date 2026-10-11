@@ -33,7 +33,8 @@ public final class SkinSender {
 	private SkinSender() {
 	}
 
-	static void request(final String mode) {
+	static void request(final String mode, final boolean herobrine) {
+		HerobrineSkin.wanted = herobrine;
 		boolean account = "account".equals(mode);
 		HostView.ownSkin = account;
 		if (!account) {
@@ -123,6 +124,7 @@ public final class SkinSender {
 
 		MineHeim.LOG.info("skin for the host: {} ({} bytes{})", source, png == null ? 0 : png.length, error == null ? "" : ", " + error);
 		MineHeim.events.accept(m.toString());
+		HerobrineSkin.make(png); // Minecraft draws him in the same skin: with the same eyes
 	}
 
 	/** The local player swung an arm (attack, mining, placing, using): the host's Steve swings too. */

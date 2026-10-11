@@ -32,6 +32,7 @@ namespace MineHeim.Core.Tests
             SteveWeaponsBorrowValheimStats();
             SteveWeaponBalance();
             SteveFoodIsValheimFood();
+            HerobrineEyes();
             Console.WriteLine(_failures == 0 ? "ALL PASS" : _failures + " FAILURE(S)");
             return _failures == 0 ? 0 : 1;
         }
@@ -118,6 +119,36 @@ namespace MineHeim.Core.Tests
             Check(WeaponMap.StaminaCost(stamina, 1) < WeaponMap.StaminaCost(stamina, 0) && Math.Abs(WeaponMap.StaminaCost(stamina, 1) - stamina * 0.67) < 1e-9, "skill lowers stamina as Valheim's");
             // several targets: Valheim's own share
             Check(WeaponMap.Split(1, true) == 1 && Math.Abs(WeaponMap.Split(2, true) - 1 / 1.5) < 1e-9 && WeaponMap.Split(3, false) == 1, "multi-hit share");
+        }
+
+        private static void HerobrineEyes()
+        {
+            // the eye pixels are on the face, row 12, two per eye
+            for (int i = 0; i < SteveModel.EyePixels.Length; i += 2)
+            {
+                int x = SteveModel.EyePixels[i], y = SteveModel.EyePixels[i + 1];
+                Check(x >= 8 && x < 16 && y == 12, "eye pixel on the face: " + x + "," + y);
+            }
+
+            // the glow quads sit just in front of the face, over the same pixels as the face's own texture shows them
+            SteveModel.Mesh glow = SteveModel.EyeGlow();
+            SteveModel.Mesh head = SteveModel.Build(SteveModel.Part.Head, false, 64, 64);
+            Check(glow.VertexCount == 8 && glow.Triangles.Count == 12, "two eye quads");
+            for (int v = 0; v < glow.VertexCount; v++)
+            {
+                float x = glow.Positions[v * 3], y = glow.Positions[v * 3 + 1], z = glow.Positions[v * 3 + 2];
+                Check(z > 4f && z < 4.5f && y >= 3f && y <= 4f && Math.Abs(x) >= 1f && Math.Abs(x) <= 3f, "eye glow vertex " + v + " at " + x + "," + y + "," + z);
+            }
+
+            // the face (first quad of the head) maps skin column 9 to model x 3..2 and row 12 to y 4..3: the right eye's white
+            // pixel is where the glow's first quad starts
+            float faceU0 = head.Uvs[0] * 64f, faceTopX = head.Positions[0];
+            Check(Math.Abs(faceU0 - 8f) < 1e-4 && Math.Abs(faceTopX - 4f) < 1e-4 && Math.Abs(glow.Positions[0] - (faceTopX - (SteveModel.EyePixels[0] - 8))) < 1e-4,
+                "the glow lines up with the face's texture");
+            // the glow faces out of the face (+z): its triangles wind clockwise seen from the front, like the face's own
+            float ax = glow.Positions[0], ay = glow.Positions[1], bx = glow.Positions[3], by = glow.Positions[4], cx = glow.Positions[6], cy = glow.Positions[7];
+            float hx = head.Positions[0], hy = head.Positions[1], ix = head.Positions[3], iy = head.Positions[4], jx = head.Positions[6], jy = head.Positions[7];
+            Check(Math.Sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) == Math.Sign((ix - hx) * (jy - hy) - (iy - hy) * (jx - hx)), "the glow winds like the face");
         }
 
         private static void SteveFoodIsValheimFood()

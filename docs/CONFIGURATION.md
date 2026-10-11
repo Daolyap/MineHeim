@@ -25,6 +25,7 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Steve.FlySpeed` | 11 | Creative flight speed in m/s (Run = 2.5x) |
 | `Steve.Avatar` | Native | who draws Steve. Native: Valheim, on the Viking in the same frame (no trailing or doubling when you run or turn; no held item or armour on him yet). Minecraft: Minecraft's own picture of him, a frame or two late |
 | `Steve.Skin` | Steve | Steve: classic Steve. Account: your Minecraft account's skin (fetched from Mojang when Minecraft starts). File: a skin PNG of your own |
+| `Steve.HerobrineEyes` | Always | was it Herobrine all along? White eyes that glow in the dark (Valheim's Steve; Minecraft's own model gets the white eyes). Always: on any skin, at the classic eye pixels. ClassicSteveOnly: not on an account or file skin. Off: Steve's own eyes |
 | `Steve.SkinFile`, `SkinSlimArms` | empty, off | with `Skin = File`: the PNG's path (64x64 or 64x32, write `/`), and whether it is for the slim "Alex" arms |
 | `Steve.HideViking` | on | in Minecraft mode, hide the Viking's body (not his held items or lights) |
 | `Steve.HideValheimHotbar` | on | in Minecraft mode, hide Valheim's hotbar (Minecraft's is the one in use); health, stamina and food stay |

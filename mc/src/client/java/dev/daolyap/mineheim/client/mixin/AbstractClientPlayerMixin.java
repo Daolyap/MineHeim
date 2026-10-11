@@ -1,6 +1,7 @@
 package dev.daolyap.mineheim.client.mixin;
 
 import dev.daolyap.mineheim.MineHeim;
+import dev.daolyap.mineheim.client.HerobrineSkin;
 import dev.daolyap.mineheim.client.HostView;
 import java.util.UUID;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -20,7 +21,15 @@ abstract class AbstractClientPlayerMixin {
 	@Inject(method = "getSkin", at = @At("HEAD"), cancellable = true)
 	private void mineheim$steve(final CallbackInfoReturnable<PlayerSkin> cir) {
 		if (MineHeim.active && !HostView.ownSkin && !Boolean.getBoolean("mineheim.ownSkin")) {
-			cir.setReturnValue(DefaultPlayerSkin.get(CLASSIC_STEVE));
+			cir.setReturnValue(HerobrineSkin.apply(DefaultPlayerSkin.get(CLASSIC_STEVE)));
+		}
+	}
+
+	/** The account's own skin (the host's Steve.Skin = Account): with Herobrine's eyes too, when the host wants them. */
+	@Inject(method = "getSkin", at = @At("RETURN"), cancellable = true)
+	private void mineheim$herobrine(final CallbackInfoReturnable<PlayerSkin> cir) {
+		if (MineHeim.active && HostView.ownSkin) {
+			cir.setReturnValue(HerobrineSkin.apply(cir.getReturnValue()));
 		}
 	}
 }

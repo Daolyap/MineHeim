@@ -43,3 +43,8 @@ L6, and B, F, M, I, W, N, E, P (not reached).
 | E3 | Fill all three slots | Minecraft's hunger bar is full and Steve cannot start eating (like Valheim) |
 | E4 | Eat raw beef or rotten flesh | Nothing in Valheim (the item is gone, as in Minecraft) |
 | E5 | Creative: eat something | A message: Creative food stays in Minecraft; no Valheim food |
+| R1 | Look at Steve's face (F7 on; a mirror view: walk toward the camera with Alt + wheel zoomed out) | White eyes, no pupils |
+| R2 | At night or in a dark crypt | The eyes glow (bright while the rest of him is dark) |
+| R3 | F11 (Minecraft draws Steve) | His eyes are white there too (lit like the rest of him, no glow) |
+| R4 | `Steve.HerobrineEyes = Off`, then back to `Always` | Steve's own eyes come back, then Herobrine's |
+| R5 | `Steve.Skin = Account` with `HerobrineEyes = ClassicSteveOnly` | The account's own eyes; `Always` whitens them |

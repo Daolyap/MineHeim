@@ -52,6 +52,14 @@ namespace MineHeim
             File,
         }
 
+        internal enum HerobrineMode
+        {
+            Always,
+            ClassicSteveOnly,
+            Off,
+        }
+
+        internal static ConfigEntry<HerobrineMode> HerobrineEyes;
         internal static ConfigEntry<AvatarMode> SteveAvatarMode;
         internal static ConfigEntry<SkinChoice> SteveSkin;
         internal static ConfigEntry<string> SteveSkinFile;
@@ -116,6 +124,10 @@ namespace MineHeim
                 "With Skin = File: the path of a Minecraft skin PNG (64x64 or old 64x32), e.g. C:/Users/you/Downloads/skin.png. Write paths with /.");
             SteveSkinSlim = Config.Bind("Steve", "SkinSlimArms", false, "With Skin = File: the skin is for the slim (3-pixel) arms model (\"Alex\").");
             SteveAvatarMode.SettingChanged += (_, __) => InputBridge.SendSteve();
+            HerobrineEyes = Config.Bind("Steve", "HerobrineEyes", HerobrineMode.Always,
+                "Steve infects every game he touches: was it Herobrine all along? His eyes are white and glow in the dark. Always: on any skin " +
+                "(at the classic skin's eye pixels). ClassicSteveOnly: only on classic Steve, not on an account or file skin. Off: Steve's own eyes.");
+            HerobrineEyes.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
             SteveSkin.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
             SteveSkinFile.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
             SteveSkinSlim.SettingChanged += (_, __) => SteveAvatar.RequestSkin();
