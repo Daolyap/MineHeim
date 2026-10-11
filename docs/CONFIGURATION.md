@@ -11,6 +11,9 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Minecraft.LaunchCommand` | empty | your own command, e.g. `"C:/Prism/prismlauncher.exe" --launch MineHeim`; empty = the installed Prism |
 | `Minecraft.HideWindow` | on | keep Minecraft's own window behind Valheim and out of the taskbar and Alt-Tab while attached |
 | `Minecraft.QuitWithValheim` | on | Minecraft saves and quits when Valheim closes |
+| **Audio** | | |
+| `Audio.MinecraftMusic` | 0 | volume of Minecraft's music (0-1); off by default, Minecraft's window is hidden so this is where to turn it up |
+| `Audio.MinecraftVolume` | 1 | master volume of everything Minecraft plays (0-1) |
 | **Input** | | |
 | `Input.ToggleKey` | F7 | Minecraft mode: on, you are Steve (Minecraft's hotbar and controls); off, the Viking |
 | `Input.GameModeKey` | F8 | Steve: Creative <-> Survival |

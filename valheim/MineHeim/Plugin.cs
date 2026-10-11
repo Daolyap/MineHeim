@@ -73,6 +73,7 @@ namespace MineHeim
         internal static ConfigEntry<string> NetherEnvironment, EndEnvironment;
         internal static ConfigEntry<bool> NetherCreaturesBurn, NetherAnimalsFlee, EndEnabled, EndDragon, EndWeather, EndCreaturesWarp;
         internal static ConfigEntry<float> NetherBurnDamage;
+        internal static ConfigEntry<float> MinecraftMusic, MinecraftVolume;
         internal static readonly NetherBridge Nether = new NetherBridge();
         internal static readonly MobBridge Mobs = new MobBridge();
 
@@ -147,6 +148,12 @@ namespace MineHeim
                 "A Minecraft mob's hit on Steve takes this times the share of the Viking's max health it would take of Steve's 20 " +
                 "(a zombie's 3 is 15%: 3.75 of a 25-health Viking, 15 of a well-fed 100). 0 = Minecraft mobs cannot hurt the Viking.");
             GameMode.SettingChanged += (_, __) => SendGameMode();
+            MinecraftMusic = Config.Bind("Audio", "MinecraftMusic", 0f,
+                new ConfigDescription("Volume of Minecraft's music (0-1). Minecraft's own window is hidden, so this is where you turn it up.", new AcceptableValueRange<float>(0f, 1f)));
+            MinecraftVolume = Config.Bind("Audio", "MinecraftVolume", 1f,
+                new ConfigDescription("Master volume of everything Minecraft plays (0-1).", new AcceptableValueRange<float>(0f, 1f)));
+            MinecraftMusic.SettingChanged += (_, __) => SendAudio();
+            MinecraftVolume.SettingChanged += (_, __) => SendAudio();
             ExplosionDamage = Config.Bind("Events", "ExplosionDamage", 60f, "Blunt damage of a Minecraft explosion at its centre (it falls off to 0 at the reach).");
             ExplosionPush = Config.Bind("Events", "ExplosionPush", 60f, "Knockback force of a Minecraft explosion at its centre.");
             ExplosionReach = Config.Bind("Events", "ExplosionReach", 1.6f, "Metres of reach per block of explosion radius (TNT has radius 4).");
@@ -265,10 +272,17 @@ namespace MineHeim
             Blocks.Clear();
             Nether.Reset();
             RequestBlockSync();
+            SendAudio();
             SendGameMode();
             InputBridge.SendSteve();
             SteveAvatar.RequestSkin();
             Link.Send("{\"t\":\"mobfight\",\"on\":" + (MobsHunt.Value ? "true" : "false") + "}");
+        }
+
+        internal static void SendAudio()
+        {
+            Link.Send("{\"t\":\"audio\",\"music\":" + MinecraftMusic.Value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                      ",\"master\":" + MinecraftVolume.Value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + "}");
         }
 
         internal static void SendGameMode()

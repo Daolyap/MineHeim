@@ -16,6 +16,7 @@ import net.minecraft.client.player.LocalPlayer;
 import java.util.Locale;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
@@ -136,6 +137,11 @@ public final class ClientInput {
 				MineHeim.LOG.info("the host is closing: quitting Minecraft");
 				minecraft.stop();
 				HostView.quitWatchdog();
+			}
+			case "audio" -> {
+				// Minecraft's window is hidden, so its music and volume are the host's to set (Audio.* in the plugin's config)
+				minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(Math.clamp(m.get("music").getAsDouble(), 0.0, 1.0));
+				minecraft.options.getSoundSourceOptionInstance(SoundSource.MASTER).set(Math.clamp(m.get("master").getAsDouble(), 0.0, 1.0));
 			}
 			case "steve" -> {
 				// Minecraft mode in the host: Steve, his hand and Minecraft's HUD show; off, the host's own player is back

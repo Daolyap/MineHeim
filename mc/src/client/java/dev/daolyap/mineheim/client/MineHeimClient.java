@@ -6,7 +6,9 @@ import dev.daolyap.mineheim.WorldBridge;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -24,6 +26,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -93,6 +96,9 @@ public class MineHeimClient implements ClientModInitializer {
 		HostLink.launch();
 		EntityRendererRegistry.register(CreatureProxy.TYPE, NoopRenderer::new); // the host's creatures are drawn by the host
 		ClientTickEvents.END_CLIENT_TICK.register(MineHeimClient::tick);
+		// however Minecraft is closed, it must not linger in Task Manager: a watchdog ends the process if the quit stalls
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> HostView.onClientStopping());
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> HostView.onServerStopped());
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			ServerPlayer player = handler.player;
 			// never left gliding from a previous session: with no host yet it would glide down into the void
@@ -222,6 +228,8 @@ public class MineHeimClient implements ClientModInitializer {
 		options.attackIndicator().set(AttackIndicatorStatus.HOTBAR);
 		// the host shows ~60-120 fps: rendering faster only competes with it for the GPU
 		options.framerateLimit().set(120);
+		// no music until the host says otherwise (Audio.MinecraftMusic): there is no window to turn it down in
+		options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(0.0);
 		options.save();
 	}
 

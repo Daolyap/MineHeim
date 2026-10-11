@@ -126,10 +126,29 @@ public final class HostView {
 	}
 
 	private static volatile boolean watchdog;
+	private static volatile boolean clientStopping;
+
+	/** How long a quit may take before the process is ended (a thread that never ends, a stuck save, a stuck render thread). */
+	private static final long QUIT_GRACE_MS = 30_000L;
+	/** After the world is saved nothing is left to wait for: the process ends this soon after the server has stopped. */
+	private static final long AFTER_SAVE_GRACE_MS = 4_000L;
+
+	/** Minecraft is shutting down, by whatever route (the host said so, the host is gone, the player closed it). */
+	static void onClientStopping() {
+		clientStopping = true;
+		quitWatchdog();
+	}
+
+	/** The integrated server has stopped (world saved): if the client is quitting too, the process has nothing left to do. */
+	static void onServerStopped() {
+		if (clientStopping) {
+			endSoon(AFTER_SAVE_GRACE_MS, "the world is saved but Minecraft is still alive");
+		}
+	}
 
 	/**
-	 * Minecraft was asked to quit: if the process is still alive a minute later (a thread that never ends, a stuck
-	 * save), end it. A normal quit saves and exits in a few seconds and never gets here.
+	 * Minecraft was asked to quit: if the process is still alive half a minute later, end it. A normal quit saves
+	 * and exits in a few seconds and never gets here.
 	 */
 	static void quitWatchdog() {
 		if (watchdog) {
@@ -137,14 +156,26 @@ public final class HostView {
 		}
 
 		watchdog = true;
+		endSoon(QUIT_GRACE_MS, "Minecraft did not exit in time");
+	}
+
+	private static void endSoon(final long ms, final String why) {
 		Thread t = new Thread(() -> {
 			try {
-				Thread.sleep(60_000L);
+				Thread.sleep(ms);
 			} catch (InterruptedException e) {
 				return;
 			}
 
-			MineHeim.LOG.warn("Minecraft did not exit within 60 s of quitting: ending the process");
+			// say what kept the process alive (read in the log next time), then end it
+			StringBuilder alive = new StringBuilder();
+			for (Thread other : Thread.getAllStackTraces().keySet()) {
+				if (other.isAlive() && !other.isDaemon() && other != Thread.currentThread()) {
+					alive.append(' ').append(other.getName()).append('[').append(other.getState()).append(']');
+				}
+			}
+
+			MineHeim.LOG.warn("{} ({} s): ending the process. Non-daemon threads still alive:{}", why, ms / 1000L, alive.length() > 0 ? alive : " none");
 			Runtime.getRuntime().halt(0);
 		}, "mineheim-quit-watchdog");
 		t.setDaemon(true);
