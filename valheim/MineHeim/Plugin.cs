@@ -23,6 +23,7 @@ namespace MineHeim
         internal static ConfigEntry<int> Port;
         internal static ConfigEntry<double> YOffset;
         internal static ConfigEntry<KeyCode> PillarKey;
+        internal static ConfigEntry<bool> TestHooks;
         internal static ConfigEntry<KeyCode> ToggleKey;
         internal static ConfigEntry<bool> StartInMinecraftMode;
         internal static ConfigEntry<bool> HideViking, HideValheimHotbar, FreeLookOn;
@@ -258,11 +259,13 @@ namespace MineHeim
 
             PillarKey = Config.Bind("Debug", "PillarTest", KeyCode.F9,
                 "Alignment test: puts a Minecraft gold pillar 6 m ahead and logs Unity's own projection of it (BepInEx/mineheim-proj.csv).");
+            TestHooks = Config.Bind("Debug", "TestHooks", false,
+                "For automated tests only: run commands from BepInEx/mineheim-cmd.txt and start a character in a world from BepInEx/mineheim-autojoin.txt.");
 
-            // Step 3 oracle: this line in BepInEx/LogOutput.log proves the plugin loaded in the real game.
+            // this line in BepInEx/LogOutput.log proves the plugin loaded
             Logger.LogInfo($"{Name} {Version} loaded");
 
-            // Recon (handover section 5): which graphics API does Valheim 1.0 actually use?
+            // which graphics API and depth conventions this Valheim uses (the compositor depends on them)
             Logger.LogInfo($"unity {Application.unityVersion}, platform {Application.platform}");
             Logger.LogInfo($"graphics: {SystemInfo.graphicsDeviceType} | {SystemInfo.graphicsDeviceName} | {SystemInfo.graphicsDeviceVersion} | {SystemInfo.graphicsMemorySize} MB");
             Logger.LogInfo($"depth: reversedZ={SystemInfo.usesReversedZBuffer} copyTextureSupport={SystemInfo.copyTextureSupport}");

@@ -50,7 +50,10 @@ an effect composites it:
 2. **Depth test.** Each pixel shows whichever world is nearer, using Valheim's own depth buffer (reversed-Z, upside down in D3D11). That
    is why Valheim's grass grows over the base of a Minecraft wall and a tree trunk hides half a cottage.
 3. **Relighting.** Minecraft's colours are tinted with Valheim's scene light and haze so the blocks sit in the same weather.
-4. **Overlay** on top: Minecraft's hand, hotbar and any open screen.
+4. **Valheim's HUD back on top.** ReShade runs at present, after Valheim has drawn its HUD, so a block in front would cover creature
+   names and damage numbers. A second marker, after the main camera, has the add-on copy Valheim's picture before the HUD; Minecraft
+   is composited into that copy, and whatever the HUD changed in Valheim's picture is laid back over the result.
+5. **Overlay** on top: Minecraft's hand, hotbar and any open screen.
 
 Re-projection puts the still world right, but not something that moves with the camera: Steve in Minecraft's picture stood where
 the Viking was a frame or two ago and trailed or doubled whenever the Viking ran or turned. So Valheim draws Steve itself
@@ -138,13 +141,7 @@ Minecraft's window stays out of the way; when Valheim closes, the plugin sends `
 
 ## Testing
 
-Everything was built against oracles, not eyeballing:
-
-- `valheim/Core.Tests`: the coordinate maths, every message format, the barrier reference counting and the item map (no game needed).
-- `host/pose_oracle.py`, `host/composite_oracle.py`: pixel alignment and re-projection error in the real games (the shader stamps frame
-  numbers as a barcode into the picture so screenshots can be paired with poses exactly).
-- `host/collision_test.ps1`, `input_test.ps1`, `events_test.ps1`, `v020_test.ps1`, `v040_test.ps1`, `v090_test.ps1`: scripted runs of
-  both real games through plugin test hooks (`BepInEx/mineheim-cmd.txt`) and `um win drive`. The 0.9.0 release passed the 0.4.0 suite
-  19/19 and the 0.9.0 suite 6/6 on the development PC.
-
-The gotchas found along the way are in [ENGINEERING-NOTES.md](ENGINEERING-NOTES.md).
+`valheim/Core.Tests` checks the coordinate maths, every message format, the barrier reference counting and the item, weapon and
+food maps without either game (`.\tools\build.ps1 -Test`). The real games were checked against oracles rather than by eye: the
+shader can stamp the frame numbers it composited into the picture as a barcode, so a screenshot pairs with the exact camera pose
+that drew it, and the plugin has test hooks (`Debug.TestHooks`) that let scripts drive both games without a keyboard.

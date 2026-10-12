@@ -516,7 +516,7 @@ namespace
 	}
 
 	/// After ReShade saved a screenshot: record next to it which Valheim pose and which Minecraft frame were composited
-	/// into it (host/composite_oracle.py compares the picture with that pose's projection).
+	/// into it (a test script compares the picture with that pose's projection).
 	void on_screenshot(effect_runtime *, const char *path)
 	{
 		char sidecar[1024];

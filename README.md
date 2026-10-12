@@ -82,7 +82,7 @@ Minecraft renders its world from Valheim's point of view into colour + depth buf
 re-projects that picture to Valheim's newest camera pose and depth-tests it against Valheim's own depth, so each pixel shows whichever game
 is nearer. Events (explosions, swings, arrows, mobs, items) cross both ways as JSON messages.
 
-The full technical breakdown, with diagrams: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md). What broke along the way: [docs/ENGINEERING-NOTES.md](docs/ENGINEERING-NOTES.md).
+The full technical breakdown, with diagrams: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
 ## Fair play and safety
 
@@ -118,9 +118,6 @@ needs, each found automatically (it tells you the install command if one is miss
 | Valheim plugin | .NET SDK 8 or newer | compiles against your own Valheim install, found in any Steam library |
 | Minecraft mod | JDK 25 (`winget install EclipseAdoptium.Temurin.25.JDK`) | Gradle downloads itself |
 | Compositor | MSVC: Visual Studio / Build Tools with C++, or `python tools\get_msvc.py` (portable, no admin) | rarely changes |
-
-The real-game test scripts (`host\v040_test.ps1`, `host\v090_test.ps1`, ...) drive both games through plugin test hooks; see
-[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#testing).
 
 ## Credits
 

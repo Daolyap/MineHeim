@@ -38,22 +38,14 @@ artifacts/**/*.bin
 # python venv
 .venv/
 
-# raw showcase takes (large); the edited clip artifacts/<date>/showcase.mp4 is also local only (mp4 is ignored above)
-artifacts/takes/
-
 # release packages (tools/make_release.ps1)
 dist/
 
-# local only: the development journal, test evidence and the toolkit field-note draft (not part of the public repo)
+# local only
 MODLOG.md
 artifacts/
 knowledge/
 
-
 # test oracles' screenshots and logs
 test-output/
-
-
-# rendered video kit (large; rebuild with python video/build.py)
-video/out/
 

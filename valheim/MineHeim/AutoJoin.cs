@@ -6,7 +6,7 @@ using UnityEngine;
 namespace MineHeim
 {
     /// <summary>
-    /// Tests only: BepInEx/mineheim-autojoin.txt holding "character|world" (e.g. "ctest|TESTWORLD2") starts that character
+    /// Tests only (Debug.TestHooks): BepInEx/mineheim-autojoin.txt holding "character|world" (e.g. "ctest|TESTWORLD2") starts that character
     /// in that world from the main menu, through the menu's own buttons' methods, so a test run can restart Valheim with
     /// nobody at the keyboard. The file is deleted when it is used; without it nothing changes.
     /// </summary>
@@ -26,7 +26,7 @@ namespace MineHeim
                 }
 
                 // a few seconds for the menu to settle (profiles and worlds listed)
-                if (Time.realtimeSinceStartup - _menuSince < 5f || !File.Exists(FilePath))
+                if (!Plugin.TestHooks.Value || Time.realtimeSinceStartup - _menuSince < 5f || !File.Exists(FilePath))
                 {
                     return;
                 }

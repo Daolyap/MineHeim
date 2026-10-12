@@ -1,93 +1,81 @@
 # Changelog
 
-## 1.0.0 (release candidate, branch `v1/nether-infection`: play test pending)
+## 1.0.0
 
-### After play test round 3
+### The Nether and the End come to Valheim
 
-- **Round 3 tested an old Valheim plugin.** With `Platform=x64` in the environment the build went to `bin\x64\Release` and
-  the installer copied an older DLL. The plugin now always builds where the installer looks, and the build fails if the DLL
-  there is older than its sources.
-- **Each Valheim world has its own Minecraft world.** What Steve builds in one world stays there; switching worlds switches
-  Minecraft's too (saved first). The first world you play takes over the old shared Minecraft world, so nothing is lost.
-- **Eating as Steve really feeds the Viking** (it failed inside Valheim before).
-- **TNT breaks rocks and ore** (big rocks are made of parts; the blast hits every part in reach), and hurts creatures with
-  Minecraft's own blast formula at the exchange rate: TNT that kills a zombie kills a Greydwarf. A Minecraft pickaxe works on
-  big rocks part by part too.
-- **Wood and gold pickaxes mine only stone**, as in Minecraft (ore is too hard). A pickaxe digs Valheim's ground only on a
-  full swing (no spam digging).
-- **Only swords sweep**; an axe, a club or a pickaxe hits the one creature it is swung at.
-- **Steve hits what the crosshair is on.** A creature under the crosshair and in reach is always hit; before, the swing
-  was aimed from the Viking's eyes, which sit below the camera, so a low animal could need aiming above it.
-- **Minecraft's mobs and Valheim's creatures really fight.** Piglins and hoglins fight back (they could not see Valheim's
-  invisible creatures past 2 blocks), monsters hunt creatures as far as they would hunt you (a ghast 64+ blocks), and flying
-  creatures (a Gjall) stand in Minecraft where their body is, so a ghast's fireballs find them. Zombified piglins and
-  endermen only fight back, as in Minecraft.
-- **Mobs hit the Viking at Minecraft's pace**: after a hit only a harder one counts for half a second (crowds, lava and
-  fire no longer hit every tick).
-- **The Viking's bag fits beside Creative's inventory** at large GUI scales (it is scaled down instead of overlapping).
-- **Free look**: hold Alt and the mouse swings the camera around Steve, so you can see his face (`Steve.FreeLook`).
-- F10 and the log show Minecraft's own frame rate.
+- **Light a Nether portal** in Minecraft (an obsidian frame and flint and steel; in Survival, throw Valheim's Obsidian, Flint and
+  Iron across for them) and nobody goes through it: instead the land around it turns to Nether. Minecraft lays a crust of
+  netherrack, crimson and warped nylium, soul soil, magma and Nether ores over Valheim's ground, with fire, roots and fungi on top,
+  spreading out from the portal (8 m a minute, up to 48 m). In Valheim the infected ground becomes the Ashlands' (ash with glowing
+  lava cracks, the Ashlands' clutter instead of grass), and standing deep inside it brings the Ashlands' sky and ash rain.
+- **Nether mobs spawn on infected land:** zombified piglins, piglins and magma cubes; hoglins, blazes and wither skeletons as it
+  grows; the odd ghast once it is big (its fireballs blow craters into Valheim).
+- **Fire, lava and magma blocks burn the Viking** in Survival (Valheim fire damage: he catches fire, fire resistance helps).
+- **Break the portal and the land heals**, outside in, until it is as it was. A **ward** keeps an infection out of its area, and
+  placing one on infected land cleans it. The portal gets a map pin. Infections are saved with the Minecraft world.
+- **You hear it and feel the heat.** The Nether wastes' drone plays over infected land; the air shimmers with heat and the light
+  turns warm (`HeatHaze` in ReShade's settings scales it).
+- **Valheim's creatures react.** Animals run from a lit portal's land; creatures standing on Nether ground burn, unless they are
+  fireproof, tamed or a boss (`Nether.CreaturesBurn`, `BurnDamage`, `AnimalsFlee`).
+- **The End comes too.** Fill an End portal's twelve frames with eyes (Creative) and the land fades into the End: end stone,
+  purpur ruins and end rods, chorus flowers, obsidian spikes crowned with end crystals. In Valheim it becomes the Mistlands, with
+  its mist and sky deep inside and a cold violet light. Endermen, endermites and shulkers walk it, and the End now and then warps
+  a Valheim creature a few metres. Once it has spread far enough the **Ender Dragon** comes and circles the portal. Kill it, or
+  break one of the frames, and the portal goes out and the land heals; fill it again and a new dragon can come. Settings: `End.*`.
+- Nothing is saved into the Valheim world: the Ashlands and Mistlands looks are drawn, not painted into the terrain.
 
-### After play test round 2
+### One inventory, one Steve
 
 - **One inventory.** Tab in Minecraft mode shows the Viking's bag beside Minecraft's inventory, with Valheim's own icons. Click a
   Valheim item to put a stand-in for it on Steve's hotbar: selected, the Viking holds the real item and the mouse is Valheim's, so
   the hammer and hoe build, Valheim weapons attack and food is eaten, without leaving Minecraft mode. Items with a twin move across
   with a shift-click (or by putting them down on the bag). **[open]** shows the Viking's own inventory.
-- **Steve holds and wears what he has.** Valheim's Steve now carries his held items (both hands) and armour, taken from
-  Minecraft itself: the item models are exactly what Minecraft draws (a shield is its shield model), leather keeps its dye.
+- **Valheim draws Steve itself**, on the Viking in the same frame, so he no longer trails or doubles up when you run or turn. He
+  walks, crouches, sits, turns his head and swings his arm when Minecraft does (`Steve.Avatar = Minecraft` brings back the old way).
+- **Steve holds and wears what he has:** held items in both hands and armour, exactly as Minecraft draws them; leather keeps its dye.
+- **Skins:** `Steve.Skin` = Steve (the default), Account (your Minecraft account's skin, slim arms included) or File (any skin PNG,
+  `Steve.SkinFile`). Old 64x32 skins work too.
+- **Was it Herobrine all along?** Steve has white, glowing eyes (`Steve.HerobrineEyes`).
+- **Free look:** hold Alt and the mouse swings the camera around Steve, so you can see his face (`Steve.FreeLook`).
+
+### Fighting
+
 - **Weapons are Valheim weapons.** Steve's weapons fight as a Valheim weapon of their tier (wood, stone and gold: Meadows; copper:
-  Black Forest; iron: Swamp; diamond: Mountains; netherite: Plains or later). Valheim's damage types, skills, stamina, stagger and
-  knockback apply; spam-clicking runs out of stamina, a fist is a fist, and bosses take a proper fight. Enchantments count
-  (Sharpness: quality, Fire Aspect: fire, Smite: spirit). Valheim's Silver now crosses as diamonds. `Events.SteveWeaponStats`.
-- **Eating as Steve feeds the Viking:** Minecraft's food is eaten as a Valheim food of the same standing (Survival).
-- **Minecraft's mobs fight the Viking too.** Creative only protects Steve: as the Viking (F7 off), Minecraft's monsters hunt you
-  and hit back.
+  Black Forest; iron: Swamp; diamond: Mountains; netherite: Plains or later), with Valheim's damage types, skills, stamina, stagger
+  and knockback. Spam-clicking runs out of stamina, a fist is a fist, and bosses take a proper fight. Enchantments count
+  (Sharpness: quality, Fire Aspect: fire, Smite: spirit). `Events.SteveWeaponStats`.
+- **Steve hits what the crosshair is on**; only swords sweep (an axe, a club or a pickaxe hits the one creature it is swung at).
+- **Tools:** wood and gold pickaxes mine only stone, as in Minecraft (ore is too hard). A pickaxe digs Valheim's ground only on a
+  full swing, and works on big rocks part by part.
+- **TNT breaks rocks and ore** and hurts creatures with Minecraft's own blast formula at the exchange rate: TNT that kills a zombie
+  kills a Greydwarf.
+- **Minecraft's mobs and Valheim's creatures really fight.** Monsters hunt creatures as far as they would hunt you, piglins and
+  hoglins fight back, and a ghast's or blaze's fireball that passes close to a creature bursts on it (a Gjall drifting out of
+  the way is still hit). Zombified piglins and endermen only fight back, as in Minecraft.
+- **Minecraft's mobs fight the Viking too**, at Minecraft's pace (after a hit only a harder one counts for half a second).
+  Creative only protects Steve: as the Viking (F7 off), Minecraft's monsters hunt you.
+
+### Food
+
+- **Eating as Steve feeds the Viking** (Survival): a Minecraft food fills one of the Viking's food slots as its Valheim twin, or as
+  the Valheim food closest to how much it feeds in Minecraft (raw meat, rotten flesh, anything else).
+
+### Worlds, picture and controls
+
+- **Each Valheim world has its own Minecraft world.** What Steve builds in one world stays there; switching worlds switches
+  Minecraft's too (saved first). The first world you play takes over the old shared Minecraft world, so nothing is lost.
+- **Valheim's HUD stays on top:** creature names and health bars, damage numbers and messages are no longer hidden by Minecraft's
+  blocks (with the matching compositor add-on).
 - **Valheim's hotbar hides in Minecraft mode** (health, stamina and food stay). `Steve.HideValheimHotbar`.
 - **Minecraft's music is off** by default; `Audio.MinecraftMusic` and `Audio.MinecraftVolume` set it from Valheim.
-- **Was it Herobrine all along?** Steve has white, glowing eyes. `Steve.HerobrineEyes`.
-- **Minecraft always closes with Valheim**: after a quit, the process ends a few seconds after the world is saved, or after 30 s
-  at most, and says in its log what kept it if it had to be ended.
+- **New keys:** F10 shows MineHeim's status with both games' frame rates (and starts Minecraft again if it crashed or was closed),
+  F11 switches who draws Steve, Alt + wheel zooms Valheim's camera in Minecraft mode.
+- **Minecraft always closes with Valheim:** after a quit, the process ends a few seconds after the world is saved, or after 30 s
+  at most.
+- Building from source: the plugin always builds where the installer looks, and the build stops if that DLL is out of date.
 
-### Before
-
-- **Steve no longer trails or doubles up when you run or turn.** Valheim now draws Steve itself, on the Viking in the same frame,
-  instead of using Minecraft's picture of him (which arrives a frame or two late). He walks, crouches, sits, turns his head and
-  swings his arm when Minecraft does. `Steve.Avatar = Minecraft` brings back the old way.
-- **Skins:** `Steve.Skin` = Steve (classic, the default), Account (your Minecraft account's own skin, slim arms included) or File
-  (any skin PNG, `Steve.SkinFile`). Old 64x32 skins work too (a solid hat area is no hat, as in Minecraft). A raised shield
-  shows: Steve holds his left arm up across his chest.
-- **New keys:** F10 shows MineHeim's status (and starts Minecraft again if it crashed or was closed), F11 switches who draws
-  Steve, and Alt + wheel zooms Valheim's camera in Minecraft mode.
-- **The End and its dragon, finished:** a dragon that is only out of sight (far away, or still loading after a restart) no
-  longer counts as killed; if the portal goes out while the dragon lives (a broken frame), the dragon leaves with the End; a
-  portal filled again can call a new dragon. A portal lit again after healing a long while shows its land again at once.
-  The infections' mobs leave once their land has healed (no piglins left roaming the Meadows). The End's healing says so.
-
-- **The Nether comes to Valheim.** Light a Nether portal in Minecraft (an obsidian frame and flint and steel; in Survival, throw
-  Valheim's Obsidian, Flint and Iron across for them) and nobody goes through it: instead the land around it turns to Nether. Minecraft lays a crust of netherrack, crimson and warped nylium, soul soil, magma
-  and Nether ores over Valheim's ground, with fire, roots and fungi on top, spreading out from the portal (8 m a minute, up to 48 m).
-  In Valheim the infected ground becomes the Ashlands' (ash with glowing lava cracks, the Ashlands' clutter instead of grass), and
-  standing deep inside it brings the Ashlands' sky and ash rain. Ash, spores and embers drift in the air.
-- **Nether mobs spawn on infected land:** zombified piglins, piglins and magma cubes; hoglins, blazes and wither skeletons as it
-  grows; the odd ghast once it is big (its fireballs blow craters into Valheim). They fight Valheim's creatures like any Minecraft mob.
-- **Fire, lava and magma blocks burn the Viking** in Survival (Valheim fire damage: he catches fire, fire resistance helps).
-- **Break the portal and the land heals**, outside in, until it is as it was. A **ward** keeps an infection out of its area, and placing
-  one on infected land cleans it. The portal gets a map pin. Infections are saved with the Minecraft world.
-- **You hear it and feel the heat.** Minecraft plays the Nether wastes' drone over infected land, with its moans and the crimson
-  forest's and soul sand valley's sounds now and then. The air shimmers with heat, most of all low over the ground and far off, and the
-  light turns warm (the compositor; `HeatHaze` in ReShade's settings scales it).
-- **Valheim's creatures react.** Animals (deer, boars, necks...) run from a lit portal's land; creatures standing on Nether ground burn,
-  unless they are fireproof, tamed or a boss (`Nether.CreaturesBurn`, `BurnDamage`, `AnimalsFlee`).
-- **The End comes too.** Fill an End portal's twelve frames with eyes (Creative: End portal frames can't be had in Survival) and the
-  land fades into the End: end stone, purpur ruins and end rods, chorus flowers, obsidian spikes crowned with end crystals (hit one
-  and it blows up). In Valheim it becomes the Mistlands: its dark ground and clutter, and its mist and sky deep inside; the light
-  turns cold and violet. Endermen, endermites and shulkers walk it, portal motes drift up, and the End now and then warps a Valheim
-  creature a few metres. Once it has spread to three quarters of its reach the **Ender Dragon** comes and circles the portal.
-  Kill the dragon, or break one of the frames, and the portal goes out and the land heals. Settings: `End.*`.
-- Nothing is saved into the Valheim world: the Ashlands and Mistlands looks are drawn, not painted into the terrain. Settings: `Nether.*`, `End.*`.
-
-## 0.9.1 — fixes from the first real play test
+## 0.9.1
 
 - **F7 now switches who you are.** Off: you are the Viking (his own body, hotbar and controls; Minecraft's blocks, mobs and items stay
   in the world). On: you are Steve (Minecraft's hotbar, hand and controls; flight and the shield). The game starts as the Viking.
@@ -112,7 +100,7 @@
   your Valheim install (any Steam library) itself, and names the install command for anything missing. A plain `dotnet build`
   now finds Valheim through Steam's registry entry and fails with one clear message instead of 195 errors.
 
-## 0.9.0 (release candidate) — MineHeim
+## 0.9.0 — MineHeim
 
 The first public build, under its new name.
 

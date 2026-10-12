@@ -9,7 +9,7 @@ using MineHeim.Core;
 namespace MineHeim
 {
     /// <summary>
-    /// Hooks for automated tests (no window focus or key presses needed): the plugin polls
+    /// Hooks for automated tests (no window focus or key presses needed): with Debug.TestHooks on, the plugin polls
     /// BepInEx/mineheim-cmd.txt twice a second, runs each line and deletes the file.
     ///   playerlog on|off     write BepInEx/mineheim-player.csv (10 Hz: time, Valheim position, Minecraft position)
     ///   groundcheck [n]      check n ground columns near the player against Minecraft's barrier blocks (result in the log)
@@ -42,7 +42,7 @@ namespace MineHeim
                 }
             }
 
-            if (Time.unscaledTime >= _nextPoll)
+            if (Plugin.TestHooks.Value && Time.unscaledTime >= _nextPoll)
             {
                 _nextPoll = Time.unscaledTime + 0.5f;
                 PollCommands(player, yOffset);

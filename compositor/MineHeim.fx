@@ -66,7 +66,7 @@ uniform float PortalWarp = 0.0;
 uniform float2 Infection = float2(0.0, 0.0);
 uniform float HeatHaze < ui_type = "drag"; ui_min = 0.0; ui_max = 2.0; ui_step = 0.05; ui_label = "Nether heat haze"; > = 1.0;
 // Debug: stamp which frames this picture was composited from into the top-left corner, as two rows of 24 bits (4 px each):
-// row 1 = Valheim's pose frame, row 2 = Minecraft's frame. Set by the add-on; host/composite_oracle.py reads it back, so a
+// row 1 = Valheim's pose frame, row 2 = Minecraft's frame. Set by the add-on; a test script can read it back, so a
 // screenshot always says exactly which poses it used (ReShade saves screenshots asynchronously: no side channel is safe).
 uniform bool DebugCode = false;
 uniform float3 FrameCode = float3(0.0, 0.0, 0.0);
