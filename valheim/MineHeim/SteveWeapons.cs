@@ -22,6 +22,8 @@ namespace MineHeim
             /// <summary>The arrow or bolt a shot adds (bows and crossbows), or null.</summary>
             public ItemDrop.ItemData Ammo;
             public Enchantments Enchantments;
+            /// <summary>Tool tiers below the borrowed item's (WeaponMap.ToolTierPenalty: wood and gold).</summary>
+            public int TierPenalty;
 
             public Skills.SkillType Skill => Item.m_shared.m_skillType;
             public Attack Attack => Item.m_shared.m_attack;
@@ -67,6 +69,11 @@ namespace MineHeim
             }
 
             found = Borrow(player, WeaponMap.Resolve(item, tier), ench);
+            if (found != null)
+            {
+                found.TierPenalty = WeaponMap.ToolTierPenalty(item);
+            }
+
             Cache[key] = found;
             return found;
         }
@@ -159,7 +166,7 @@ namespace MineHeim
             hit.m_pushForce = shared.m_attackForce * (attack != null ? attack.m_forceMultiplier : 1f) * (float)WeaponMap.PushFactor(e);
             hit.m_staggerMultiplier = attack != null ? attack.m_staggerMultiplier : 1f;
             hit.m_backstabBonus = shared.m_backstabBonus;
-            hit.m_toolTier = (short)shared.m_toolTier;
+            hit.m_toolTier = (short)System.Math.Max(0, shared.m_toolTier - b.TierPenalty);
             hit.m_skill = shared.m_skillType;
             hit.m_skillLevel = player.GetSkillLevel(shared.m_skillType);
             hit.m_itemLevel = (short)b.Item.m_quality;

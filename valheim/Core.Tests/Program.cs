@@ -440,6 +440,10 @@ namespace MineHeim.Core.Tests
             Check(Messages.Mobs("{\"t\":\"mobs\",\"m\":[]}").Count == 0, "no mobs");
             Check(Messages.MobHit(51, 2.5, -1, true) == "{\"t\":\"mhit\",\"id\":51,\"amount\":2.5,\"by\":-1,\"player\":true}", "mhit message: " + Messages.MobHit(51, 2.5, -1, true));
             Check(Messages.HealthPerPoint(100) == 5 && Messages.HealthPerPoint(25) == 1.25 && Messages.HealthPerPoint(10) == 1.25, "exchange rate: 100 health -> 5 per point, never under 25/20");
+            Check(WeaponMap.ToolTierPenalty("wooden_pickaxe") == 1 && WeaponMap.ToolTierPenalty("minecraft:golden_axe") == 1 && WeaponMap.ToolTierPenalty("stone_pickaxe") == 0,
+                "wood and gold tools work a tier below their Valheim twin (stone only, as in Minecraft)");
+            Check(WeaponMap.IsOre("MineRock_Copper(Clone)") && WeaponMap.IsOre("mudpile") && WeaponMap.IsOre("Rock_3") == false &&WeaponMap.IsOre("rock4_forest") == false && WeaponMap.IsOre("silvervein"),
+                "ore deposits told from plain rock");
             Check(Messages.ExplosionPoints(0, 4) == 57 && Math.Abs(Messages.ExplosionPoints(4, 4) - 22) < 1e-9 && Messages.ExplosionPoints(8, 4) == 0 && Messages.ExplosionPoints(9, 4) == 0,
                 "Minecraft's TNT: 57 at the centre, 22 four blocks out, none from eight");
             var pl = Messages.Projectiles("{\"t\":\"proj\",\"p\":[[12,\"arrow\",-1.500,64.250,3.000,9.0],[13,\"firework\",0.000,70.000,-2.250]]}");

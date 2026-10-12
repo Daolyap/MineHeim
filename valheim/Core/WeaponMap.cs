@@ -73,6 +73,38 @@ namespace MineHeim.Core
             new KeyValuePair<string, int>("netherite_", 4),
         };
 
+        /// <summary>
+        /// How many tool tiers below its Valheim twin a Minecraft tool works: wood and gold mine only stone in Minecraft, so
+        /// they work a tier below the stone (antler) pickaxe they borrow: rock yes, copper and tin no.
+        /// </summary>
+        public static int ToolTierPenalty(string item)
+        {
+            string id = item ?? "";
+            if (id.StartsWith("minecraft:", StringComparison.Ordinal))
+            {
+                id = id.Substring("minecraft:".Length);
+            }
+
+            return id.StartsWith("wooden_", StringComparison.Ordinal) || id.StartsWith("golden_", StringComparison.Ordinal) ? 1 : 0;
+        }
+
+        private static readonly string[] Ores = { "copper", "tin", "iron", "silver", "obsidian", "meteorite", "blackmarble", "flametal", "softtissue", "mudpile" };
+
+        /// <summary>Whether a Valheim deposit (its object's name, "MineRock_Copper(Clone)") is ore, not plain stone.</summary>
+        public static bool IsOre(string objectName)
+        {
+            string name = (objectName ?? "").ToLowerInvariant();
+            foreach (string ore in Ores)
+            {
+                if (name.Contains(ore))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>The highest tier the world has opened: the last boss beaten in Valheim's order.</summary>
         public static int WorldTier(Func<string, bool> hasGlobalKey)
         {

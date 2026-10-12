@@ -517,10 +517,18 @@ namespace MineHeim
                 }
             }
 
+            if (weapon != null && weapon.TierPenalty > 0 && pick && WeaponMap.IsOre(((Component)target2).gameObject.name))
+            {
+                tool.m_toolTier = -1; // wood and gold mine only stone (Minecraft's rule): Valheim says the ore is too hard
+            }
+
             tool.m_attacker = player.GetZDOID();
             target2.Damage(tool);
             ToolHits++;
-            Plugin.Log.LogInfo(item + " swing hit a " + target2.GetDestructibleType() + " at " + best.ToString("0.0") + " m");
+            // (rocks, ore and trees need a tool tier: say whether this one was enough)
+            object needs = Traverse.Create(target2).Field("m_minToolTier").GetValue();
+            Plugin.Log.LogInfo(item + " swing hit a " + target2.GetDestructibleType() + " at " + best.ToString("0.0") + " m (tool tier " + tool.m_toolTier +
+                (needs is int minTier ? (tool.m_toolTier >= minTier ? ", enough for " : ", too low for ") + minTier : "") + ")");
         }
 
         /// <summary>
@@ -564,18 +572,21 @@ namespace MineHeim
             }
 
             double share = factor * WeaponMap.Split(_targets.Count, weapon.Attack != null && weapon.Attack.m_lowerDamagePerHit) * Plugin.WeaponDamageScale.Value;
-            float dealt = 0f;
+            float dealt = 0f, fire = 0f, spirit = 0f;
             foreach (KeyValuePair<Character, Vector3> t in _targets)
             {
                 HitData hit = MakeHit(t.Value, new Vector3(aim.x, 0.1f, aim.z), 0f);
                 SteveWeapons.Fill(hit, weapon, player, share, true);
                 dealt = hit.GetTotalDamage();
+                fire = hit.m_damage.m_fire;
+                spirit = hit.m_damage.m_spirit;
                 t.Key.Damage(hit);
             }
 
             player.RaiseSkill(weapon.Skill, 1f);
-            Plugin.Log.LogInfo(string.Format("{0} swing as {1} (q{2}): {3} creature(s) hit for {4:0.0} each before resistances", item, weapon.Prefab,
-                weapon.Item.m_quality, _targets.Count, dealt));
+            Plugin.Log.LogInfo(string.Format("{0} swing as {1} (q{2}): {3} creature(s) hit for {4:0.0} each before resistances{5}{6}", item, weapon.Prefab,
+                weapon.Item.m_quality, _targets.Count, dealt, fire > 0f ? string.Format(", {0:0.0} of it fire", fire) : "",
+                spirit > 0f ? string.Format(", {0:0.0} of it spirit", spirit) : ""));
             return true;
         }
 
