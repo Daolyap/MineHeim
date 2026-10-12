@@ -34,6 +34,16 @@ namespace MineHeim
                 return;
             }
 
+            // poisonous: Valheim's Pukeberries are no food (nothing fills a slot), they make the Viking throw up
+            GameObject puke = System.Array.IndexOf(FoodMap.Candidates(item), "Pukeberries") >= 0 && ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab("Pukeberries") : null;
+            ItemDrop pukeDrop = puke != null ? puke.GetComponent<ItemDrop>() : null;
+            if (pukeDrop != null && pukeDrop.m_itemData.m_shared.m_consumeStatusEffect != null)
+            {
+                player.GetSEMan().AddStatusEffect(pukeDrop.m_itemData.m_shared.m_consumeStatusEffect, true);
+                Plugin.Log.LogInfo("steve ate " + item + ": the Viking ate Pukeberries");
+                return;
+            }
+
             // its Valheim twin, or a food of the same standing (raw meat, rotten flesh, a newer Minecraft's food)
             string prefab = FoodMap.Resolve(item, Messages.IntValue(json, "n", 0), p => FoodOf(p) != null);
             if (prefab.Length == 0)
