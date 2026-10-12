@@ -218,7 +218,7 @@ namespace MineHeim
 
             UseTexture(texture, slim);
             SkinSource = source;
-            Plugin.Log.LogInfo("steve skin: " + source + (slim ? " (slim arms)" : "") + ", " + texture.width + "x" + texture.height);
+            Plugin.Log.LogInfo("steve skin: " + source + (slim ? " (slim arms)" : "") + ", " + texture.width + "x" + texture.height + (_eyesOn ? ", Herobrine's eyes" : ""));
         }
 
         private static void UseTexture(Texture2D texture, bool slim)

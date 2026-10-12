@@ -42,6 +42,7 @@ namespace MineHeim
             }
 
             ItemDrop.ItemData food = FoodOf(prefab).Clone();
+            food.m_dropPrefab = ObjectDB.instance.GetItemPrefab(prefab); // Valheim's food slot is keyed by it (unset on the prefab's own data)
             if (player.CanEat(food, true) && player.EatFood(food))
             {
                 Plugin.Log.LogInfo("steve ate " + item + ": the Viking ate " + prefab);

@@ -147,6 +147,15 @@ namespace MineHeim
                         // the Viking drops n of an item (given to him first), exactly as from his inventory
                         DropItem(player, w.Length > 1 ? w[1] : "Wood", w.Length > 2 ? int.Parse(w[2], CultureInfo.InvariantCulture) : 1);
                         break;
+                    case "give":
+                        // n of a Valheim item into the Viking's bag: "give Hammer 1"
+                        {
+                            GameObject prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(w.Length > 1 ? w[1] : "Wood") : null;
+                            bool added = player != null && prefab != null && player.GetInventory().AddItem(prefab, w.Length > 2 ? int.Parse(w[2], CultureInfo.InvariantCulture) : 1);
+                            Plugin.Log.LogInfo("give " + (w.Length > 1 ? w[1] : "Wood") + ": " + (added ? "in the bag" : "refused"));
+                        }
+
+                        break;
                     case "count":
                         Plugin.Log.LogInfo(string.Format("count: {0} x{1}", w.Length > 1 ? w[1] : "Wood", CountItem(player, w.Length > 1 ? w[1] : "Wood")));
                         break;
@@ -282,6 +291,14 @@ namespace MineHeim
                                 HarmonyLib.AccessTools.Method(typeof(PrivateArea), "SetEnabled").Invoke(ward, new object[] { true });
                                 Plugin.Log.LogInfo("ward on at " + g.transform.position + ": inside=" + WorldEvents.InWard(g.transform.position));
                             }
+                        }
+
+                        break;
+                    case "quit":
+                        // Valheim's own Quit -> Yes (saves the world and the character), for unattended restarts
+                        if (Menu.instance != null)
+                        {
+                            HarmonyLib.Traverse.Create(Menu.instance).Method("OnQuitYes").GetValue();
                         }
 
                         break;

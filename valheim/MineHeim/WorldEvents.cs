@@ -21,6 +21,8 @@ namespace MineHeim
 
         private readonly Dictionary<int, Vector3> _arrows = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, float> _arrowSeen = new Dictionary<int, float>();
+        private readonly Dictionary<int, Vector3> _arrowFirst = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, int> _arrowReports = new Dictionary<int, int>();
         private readonly RaycastHit[] _hits = new RaycastHit[24];
         private readonly List<int> _stale = new List<int>();
 
@@ -184,6 +186,8 @@ namespace MineHeim
         {
             Explosions++;
             float reach = Mathf.Max(1f, radiusBlocks) * Plugin.ExplosionReach.Value;
+            // creatures as far as Minecraft's blast reaches a mob (two radii: TNT 8 m, a ghast's fireball 2 m)
+            float hurtReach = Mathf.Max(reach, 2f * radiusBlocks);
             int hurt = 0;
             foreach (Character c in new List<Character>(Character.GetAllCharacters()))
             {
@@ -192,21 +196,22 @@ namespace MineHeim
                     continue; // (a Minecraft mob's body: Minecraft's own blast already hit the mob)
                 }
 
-                Vector3 target = c.m_eye != null ? c.m_eye.position : c.transform.position + Vector3.up;
-                float d = Vector3.Distance(center, target);
-                if (d > reach)
+                // the nearest point of its body, as Minecraft measures a blast to the mob (a Troll's eyes are 3 m up)
+                Vector3 target;
+                float d = DistanceTo(c, center, out target);
+                if (d > hurtReach)
                 {
                     continue;
                 }
 
-                float falloff = 1f - d / reach;
+                float falloff = Mathf.Max(0f, 1f - d / reach);
                 Vector3 away = target - center;
                 away.y = Mathf.Max(away.y, 0.25f * away.magnitude); // lifted a little, as a blast does
                 HitData hit = MakeHit(target, away, Plugin.ExplosionPush.Value * falloff);
                 // Minecraft's own blast at the exchange rate (TNT that kills a zombie kills a Greydwarf, and grows with
                 // the Viking), never less than Events.ExplosionDamage
                 double rate = c.IsPlayer() ? MobBridge.HealthRate() : MobBridge.Rate();
-                float minecraft = (float)(Messages.ExplosionPoints(Vector3.Distance(center, c.transform.position), radiusBlocks) * rate);
+                float minecraft = (float)(Messages.ExplosionPoints(d, radiusBlocks) * rate);
                 hit.m_damage.m_blunt = Mathf.Max(Plugin.ExplosionDamage.Value * falloff, minecraft) * strength;
                 hit.m_staggerMultiplier = 2f;
                 c.Damage(hit);
@@ -229,7 +234,7 @@ namespace MineHeim
             }
 
             int n = Physics.OverlapSphereNonAlloc(center, reach, _overlap, StructureMask, QueryTriggerInteraction.Ignore);
-            var seen = new HashSet<IDestructible>();
+            var seen = new HashSet<object>();
             int damaged = 0;
             Player player = Player.m_localPlayer;
             for (int i = 0; i < n; i++)
@@ -240,8 +245,11 @@ namespace MineHeim
                     continue;
                 }
 
+                // a big rock or an ore vein is made of areas, each its own collider, and takes a hit only on the area it
+                // names: the blast hits every area in reach (the rest of anything else is hit once)
                 IDestructible target = col.GetComponentInParent<IDestructible>();
-                if (target == null || target is Character || !seen.Add(target))
+                bool areas = target is MineRock5 || target is MineRock;
+                if (target == null || target is Character || !seen.Add(areas ? (object)col : target))
                 {
                     continue;
                 }
@@ -260,6 +268,7 @@ namespace MineHeim
                 }
 
                 HitData hit = MakeHit(at, at - center, 0f);
+                hit.m_hitCollider = col;
                 hit.m_toolTier = 4;
                 float d = damage * falloff;
                 if (target is WearNTear)
@@ -426,6 +435,7 @@ namespace MineHeim
             // along the aim and angled down toward the feet (rocks and stumps are low), with a fat ray
             float best = float.MaxValue;
             IDestructible target2 = null;
+            Collider struck = null;
             Vector3 point = Vector3.zero;
             Vector3 right = Vector3.Cross(Vector3.up, aim).normalized;
             foreach (float downDegrees in new[] { 0f, 20f, 40f })
@@ -447,6 +457,7 @@ namespace MineHeim
 
                     best = _hits[i].distance;
                     target2 = found;
+                    struck = _hits[i].collider;
                     point = _hits[i].distance <= 0f ? eye + dir : _hits[i].point;
                 }
             }
@@ -482,6 +493,7 @@ namespace MineHeim
             }
 
             var tool = MakeHit(point, aim, 0f);
+            tool.m_hitCollider = struck; // a big rock takes the hit on the area struck (it ignores a hit that names none)
             bool pick = item.EndsWith("_pickaxe");
             if (weapon != null)
             {
@@ -578,10 +590,13 @@ namespace MineHeim
                 Mapping.FromMinecraft(p.X, p.Y, p.Z, Plugin.YOffset.Value, out ux, out uy, out uz);
                 var at = new Vector3((float)ux, (float)uy, (float)uz);
                 _arrowSeen[p.Id] = now;
+                int reports;
+                _arrowReports[p.Id] = _arrowReports.TryGetValue(p.Id, out reports) ? reports + 1 : 1;
                 Vector3 before;
                 if (!_arrows.TryGetValue(p.Id, out before))
                 {
                     _arrows[p.Id] = at;
+                    _arrowFirst[p.Id] = at;
                     continue;
                 }
 
@@ -693,8 +708,16 @@ namespace MineHeim
 
             foreach (int id in _stale)
             {
+                Vector3 last, first;
+                if (_arrows.TryGetValue(id, out last) && _arrowFirst.TryGetValue(id, out first))
+                {
+                    Plugin.Log.LogInfo(string.Format("arrow {0} landed without hitting anything here: {1} report(s), {2} -> {3}", id, _arrowReports.ContainsKey(id) ? _arrowReports[id] : 0, first, last));
+                }
+
                 _arrowSeen.Remove(id);
                 _arrows.Remove(id);
+                _arrowFirst.Remove(id);
+                _arrowReports.Remove(id);
             }
         }
 

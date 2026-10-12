@@ -80,6 +80,10 @@ public final class ValheimBag {
 
 		cols = m.has("cols") ? m.get("cols").getAsInt() : 8;
 		rows = m.has("rows") ? m.get("rows").getAsInt() : 4;
+		if (list.size() != cells.size()) {
+			MineHeim.LOG.info("the Viking's bag: {} item(s), {}x{}", list.size(), cols, rows);
+		}
+
 		cells = list;
 	}
 

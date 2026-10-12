@@ -66,8 +66,8 @@ public final class ClientInput {
 	 */
 	public static void swing(final Minecraft minecraft) {
 		LocalPlayer player = minecraft.player;
-		if (player == null || realBlock(minecraft) != null) {
-			return;
+		if (player == null || realBlock(minecraft) != null || !ValheimBag.standIn(player.getMainHandItem()).isEmpty()) {
+			return; // (a Valheim stand-in in hand: the Viking attacks with the real item in Valheim)
 		}
 
 		String item = BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).getPath();

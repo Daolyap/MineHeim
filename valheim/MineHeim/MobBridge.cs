@@ -101,17 +101,19 @@ namespace MineHeim
                     continue;
                 }
 
-                // its size from its capsule (scaled creatures, e.g. two-star ones, are bigger)
+                // its size and place from its capsule's box in the world: scaled creatures (two-star ones) are bigger, a flyer's
+                // body (a Gjall, a Deathsquito) hangs around its transform rather than standing on it, a serpent lies along
                 float width = 0.8f, height = 1.8f;
+                Vector3 feet = c.transform.position;
                 CapsuleCollider capsule = c.GetComponent<CapsuleCollider>();
-                if (capsule != null)
+                if (capsule != null && capsule.enabled)
                 {
-                    Vector3 s = capsule.transform.lossyScale;
-                    width = capsule.radius * 2f * Mathf.Max(s.x, s.z);
-                    height = Mathf.Max(capsule.height * s.y, width);
+                    Bounds box = capsule.bounds;
+                    width = Mathf.Max(box.size.x, box.size.z);
+                    height = Mathf.Max(box.size.y, 0.3f);
+                    feet = new Vector3(box.center.x, box.min.y, box.center.z);
                 }
 
-                Vector3 feet = c.transform.position;
                 double mx, my, mz;
                 Mapping.Position(feet.x, feet.y, feet.z, yOffset, out mx, out my, out mz);
                 _creatures.Add(new Messages.Creature { Id = c.GetInstanceID(), Name = Utils.GetPrefabName(c.gameObject), X = mx, Y = my, Z = mz, Width = width, Height = height });
