@@ -65,6 +65,7 @@ Step-by-step with screenshots: [docs/INSTALL.md](docs/INSTALL.md). To remove it,
 | **Tab** (Minecraft mode) | Minecraft's inventory, with the **Viking's bag** beside it. Click a Valheim item: it goes on Steve's hotbar as a stand-in (the item stays in the bag). Shift-click one with a Minecraft twin: it moves into Minecraft. Put a Minecraft item down on the bag: it moves into Valheim. **[open]**: the Viking's own Valheim inventory (armour, crafting). |
 | **a Valheim stand-in selected** (Minecraft mode) | the Viking holds the real item and the mouse is Valheim's: the hammer and hoe build (the wheel turns the piece, right button the build menu), a Valheim weapon attacks, the right button eats or drinks food and meads. Pick a Minecraft slot (1-9) to go back. |
 | **Alt + wheel** (Minecraft mode) | zoom Valheim's camera (the wheel alone picks Minecraft's hotbar) |
+| **Alt, held** | free look: the mouse swings the camera around Steve (see his face) while he keeps facing where he was |
 | **Jump, Jump** (double-tap, as Steve) | Creative: fly or land. Hold Jump to rise, Left Ctrl to sink, Run to go faster. |
 | **Right mouse, held** (Minecraft mode) | raise Minecraft's shield |
 | **drop an item** (Valheim inventory) | items with a Minecraft twin cross into Minecraft |

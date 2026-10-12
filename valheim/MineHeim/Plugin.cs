@@ -171,7 +171,7 @@ namespace MineHeim
                 new ConfigDescription("Master volume of everything Minecraft plays (0-1).", new AcceptableValueRange<float>(0f, 1f)));
             MinecraftMusic.SettingChanged += (_, __) => SendAudio();
             MinecraftVolume.SettingChanged += (_, __) => SendAudio();
-            ExplosionDamage = Config.Bind("Events", "ExplosionDamage", 60f, "Blunt damage of a Minecraft explosion at its centre (it falls off to 0 at the reach).");
+            ExplosionDamage = Config.Bind("Events", "ExplosionDamage", 60f, "The least blunt damage a Minecraft explosion does at its centre (falling off to 0 at the reach). Creatures take Minecraft's own blast damage at the exchange rate when that is more (TNT: 57 points at the centre).");
             ExplosionPush = Config.Bind("Events", "ExplosionPush", 60f, "Knockback force of a Minecraft explosion at its centre.");
             ExplosionReach = Config.Bind("Events", "ExplosionReach", 1.6f, "Metres of reach per block of explosion radius (TNT has radius 4).");
             HurtPlayer = Config.Bind("Events", "HurtPlayer", true, "Minecraft explosions hurt the Viking too.");

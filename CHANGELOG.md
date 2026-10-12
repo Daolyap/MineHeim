@@ -2,6 +2,30 @@
 
 ## 1.0.0 (release candidate, branch `v1/nether-infection`: play test pending)
 
+### After play test round 3
+
+- **Round 3 tested an old Valheim plugin.** With `Platform=x64` in the environment the build went to `bin\x64\Release` and
+  the installer copied an older DLL. The plugin now always builds where the installer looks, and the build fails if the DLL
+  there is older than its sources.
+- **Each Valheim world has its own Minecraft world.** What Steve builds in one world stays there; switching worlds switches
+  Minecraft's too (saved first). The first world you play takes over the old shared Minecraft world, so nothing is lost.
+- **Eating as Steve really feeds the Viking** (it failed inside Valheim before).
+- **TNT breaks rocks and ore** (big rocks are made of parts; the blast hits every part in reach), and hurts creatures with
+  Minecraft's own blast formula at the exchange rate: TNT that kills a zombie kills a Greydwarf. A Minecraft pickaxe works on
+  big rocks part by part too.
+- **Wood and gold pickaxes mine only stone**, as in Minecraft (ore is too hard). A pickaxe digs Valheim's ground only on a
+  full swing (no spam digging).
+- **Only swords sweep**; an axe, a club or a pickaxe hits the one creature it is swung at.
+- **Minecraft's mobs and Valheim's creatures really fight.** Piglins and hoglins fight back (they could not see Valheim's
+  invisible creatures past 2 blocks), monsters hunt creatures as far as they would hunt you (a ghast 64+ blocks), and flying
+  creatures (a Gjall) stand in Minecraft where their body is, so a ghast's fireballs find them. Zombified piglins and
+  endermen only fight back, as in Minecraft.
+- **Mobs hit the Viking at Minecraft's pace**: after a hit only a harder one counts for half a second (crowds, lava and
+  fire no longer hit every tick).
+- **The Viking's bag fits beside Creative's inventory** at large GUI scales (it is scaled down instead of overlapping).
+- **Free look**: hold Alt and the mouse swings the camera around Steve, so you can see his face (`Steve.FreeLook`).
+- F10 and the log show Minecraft's own frame rate.
+
 ### After play test round 2
 
 - **One inventory.** Tab in Minecraft mode shows the Viking's bag beside Minecraft's inventory, with Valheim's own icons. Click a

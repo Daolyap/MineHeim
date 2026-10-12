@@ -29,6 +29,7 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Steve.SkinFile`, `SkinSlimArms` | empty, off | with `Skin = File`: the PNG's path (64x64 or 64x32, write `/`), and whether it is for the slim "Alex" arms |
 | `Steve.HideViking` | on | in Minecraft mode, hide the Viking's body (not his held items or lights) |
 | `Steve.HideValheimHotbar` | on | in Minecraft mode, hide Valheim's hotbar (Minecraft's is the one in use); health, stamina and food stay |
+| `Steve.FreeLook` | on | hold Alt to look around: the mouse swings the camera around Steve (or the Viking) while he keeps facing where he was; let go and it comes back behind him. Alt + wheel still zooms |
 | `Steve.CreativeInvulnerable` | on | in Creative, as Steve: no damage and no stamina used. Creative is Steve's only: as the Viking (Minecraft mode off) Minecraft treats you as Survival, so its mobs hunt you and fight back |
 | **Shield** | | |
 | `Shield.Enabled` | on | a raised Minecraft shield blocks Valheim attacks |
@@ -41,7 +42,7 @@ In this file a single `\` is an escape character: write paths with `/` or `\\`.
 | `Events.WeaponDamageScale` | 1 | a multiplier on everything Steve deals to Valheim creatures (both ways) |
 | `Events.WardsBlockExplosions` | on | explosions spare buildings and the ground inside an active ward (creatures are still hurt) |
 | `Events.MinecraftDamageShare` | 1 | a Minecraft mob's hit takes this times its share of Steve's 20 from the Viking's max health (0 = harmless) |
-| `Events.ExplosionDamage`, `ExplosionPush`, `ExplosionReach` | 60, 60, 1.6 | a Minecraft explosion's damage and knockback on creatures, and metres of reach per block of radius |
+| `Events.ExplosionDamage`, `ExplosionPush`, `ExplosionReach` | 60, 60, 1.6 | a Minecraft explosion hurts creatures as Minecraft's own blast would, at the exchange rate (TNT: 57 points at the centre); ExplosionDamage is the least it does at the centre. Knockback, and metres of reach per block of radius for buildings, trees and rocks (creatures: at least two radii, as in Minecraft) |
 | `Events.HurtPlayer` | on | Minecraft explosions hurt the Viking too |
 | `Events.ExplosionStructureDamage` | 150 | explosion damage to Valheim buildings, trees and rocks (0 = off) |
 | `Events.ExplosionCraters` | on | explosions dig craters (not inside wards or no-build areas) |
