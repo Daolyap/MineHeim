@@ -246,7 +246,7 @@ public final class ValheimBag {
 
 		if (hovered == null && creative) {
 			g.text(Minecraft.getInstance().font, "click: onto the hotbar", x0 + 4, y0 + o[3] + 2, 0xFFB0A080, true);
-			g.text(Minecraft.getInstance().font, "Creative: nothing crosses", x0 + 4, y0 + o[3] + 12, 0xFFB0A080, true);
+			g.text(Minecraft.getInstance().font, "Creative: MC items stay", x0 + 4, y0 + o[3] + 12, 0xFFB0A080, true);
 		}
 
 		if (hovered != null) {

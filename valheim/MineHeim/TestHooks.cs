@@ -31,8 +31,25 @@ namespace MineHeim
         // messages to Minecraft at set times ("mcattack": clicks closer together than a command file can be polled)
         private readonly List<KeyValuePair<float, string>> _timed = new List<KeyValuePair<float, string>>();
 
+        // camera moves for takes: "spin" turns the Viking, "orbit" swings the free-look camera around him (degrees a second)
+        private float _spinRate, _spinUntil, _orbitRate, _orbitUntil;
+
         public void Tick(Player player, double yOffset)
         {
+            if (player != null && Time.unscaledTime < _spinUntil)
+            {
+                player.SetMouseLook(new Vector2(_spinRate * Time.deltaTime, 0f));
+            }
+
+            if (Time.unscaledTime < _orbitUntil)
+            {
+                FreeLook.Yaw += _orbitRate * Time.deltaTime;
+            }
+            else if (FreeLook.Scripted)
+            {
+                FreeLook.Scripted = false; // eases back behind him
+            }
+
             for (int i = _timed.Count - 1; i >= 0; i--)
             {
                 if (Time.unscaledTime >= _timed[i].Key)
@@ -250,6 +267,91 @@ namespace MineHeim
 
                             player.TeleportTo(to, player.transform.rotation, false);
                             Plugin.Log.LogInfo("moved to " + to);
+                        }
+
+                        break;
+                    case "spin":
+                        // turn the Viking smoothly: "spin 20 6" = 20 degrees a second for 6 s
+                        _spinRate = w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 20f;
+                        _spinUntil = Time.unscaledTime + (w.Length > 2 ? float.Parse(w[2], CultureInfo.InvariantCulture) : 6f);
+                        break;
+                    case "orbit":
+                        // swing the camera around the Viking: "orbit 30 8 -15" = 30 degrees a second for 8 s, 15 degrees from above
+                        _orbitRate = w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 30f;
+                        _orbitUntil = Time.unscaledTime + (w.Length > 2 ? float.Parse(w[2], CultureInfo.InvariantCulture) : 8f);
+                        FreeLook.Pitch = w.Length > 3 ? float.Parse(w[3], CultureInfo.InvariantCulture) : FreeLook.Pitch;
+                        FreeLook.Scripted = true;
+                        break;
+                    case "face":
+                        // point the Viking (and the camera) at a compass heading: 0 north, 90 east
+                        {
+                            System.Reflection.FieldInfo yaw = HarmonyLib.AccessTools.Field(typeof(Player), "m_lookYaw");
+                            if (player != null && yaw != null)
+                            {
+                                yaw.SetValue(player, Quaternion.Euler(0f, w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 0f, 0f));
+                            }
+                        }
+
+                        break;
+                    case "hud":
+                        // Valheim's HUD off or on for clean takes (as Valheim's own hide-HUD key)
+                        {
+                            System.Reflection.FieldInfo hidden = HarmonyLib.AccessTools.Field(typeof(Hud), "m_userHidden");
+                            if (Hud.instance != null && hidden != null)
+                            {
+                                hidden.SetValue(Hud.instance, w.Length > 1 && w[1] == "off");
+                            }
+
+                            Plugin.Log.LogInfo("hud: " + (hidden != null ? (w.Length > 1 ? w[1] : "on") : "no m_userHidden field"));
+                        }
+
+                        break;
+                    case "tntat":
+                        // primed TNT dx, dz metres from the Viking (Valheim axes), on the ground: "tntat 6 2 60" (fuse in ticks)
+                        if (player != null)
+                        {
+                            Vector3 at = player.transform.position + new Vector3(w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 5f, 0f,
+                                                                                  w.Length > 2 ? float.Parse(w[2], CultureInfo.InvariantCulture) : 0f);
+                            RaycastHit ground;
+                            if (Physics.Raycast(at + Vector3.up * 30f, Vector3.down, out ground, 60f, LayerMask.GetMask("terrain")))
+                            {
+                                at.y = ground.point.y;
+                            }
+
+                            double mx, my, mz;
+                            Mapping.Position(at.x, at.y + 0.3, at.z, yOffset, out mx, out my, out mz);
+                            Link.Send(Messages.Command(string.Format(CultureInfo.InvariantCulture, "summon minecraft:tnt {0:0.###} {1:0.###} {2:0.###} {{fuse:{3}}}", mx, my, mz,
+                                w.Length > 3 ? int.Parse(w[3], CultureInfo.InvariantCulture) : 60)));
+                        }
+
+                        break;
+                    case "summonat":
+                        // a Minecraft entity dx, dz metres from the Viking (Valheim axes), on the ground: "summonat 8 -2 zombie"
+                        if (player != null && w.Length > 3)
+                        {
+                            Vector3 at = player.transform.position + new Vector3(float.Parse(w[1], CultureInfo.InvariantCulture), 0f, float.Parse(w[2], CultureInfo.InvariantCulture));
+                            RaycastHit ground;
+                            if (Physics.Raycast(at + Vector3.up * 30f, Vector3.down, out ground, 60f, LayerMask.GetMask("terrain")))
+                            {
+                                at.y = ground.point.y;
+                            }
+
+                            double mx, my, mz;
+                            Mapping.Position(at.x, at.y + 0.1, at.z, yOffset, out mx, out my, out mz);
+                            Link.Send(Messages.Command(string.Format(CultureInfo.InvariantCulture, "summon minecraft:{0} {1:0.###} {2:0.###} {3:0.###}", w[3], mx, my, mz)));
+                        }
+
+                        break;
+                    case "camdist":
+                        // how far the camera sits behind the Viking, metres (Valheim's own zoom, as the mouse wheel sets it)
+                        {
+                            System.Reflection.FieldInfo dist = HarmonyLib.AccessTools.Field(typeof(GameCamera), "m_distance");
+                            if (GameCamera.instance != null && dist != null)
+                            {
+                                float d = w.Length > 1 ? float.Parse(w[1], CultureInfo.InvariantCulture) : 4f;
+                                GameCamera.instance.m_maxDistance = Mathf.Max(GameCamera.instance.m_maxDistance, d);
+                                dist.SetValue(GameCamera.instance, d);
+                            }
                         }
 
                         break;

@@ -8,6 +8,14 @@ sit on Valheim's ground behind its trees, his TNT blows craters into it, and Min
 
 <table>
 <tr>
+<td width="50%"><img src="docs/media/nether.jpg" alt="A Nether portal turning a Valheim forest into Nether"><br><b>The Nether spreads.</b> Light a Nether portal and nobody goes through it: the land around it turns to Nether, with the Ashlands' sky, fire and Nether mobs.</td>
+<td width="50%"><img src="docs/media/end.jpg" alt="End stone, chorus plants and endermen in Valheim's Black Forest"><br><b>So does the End.</b> Fill an End portal and the Black Forest fades into end stone, chorus and endermen, until the Ender Dragon comes.</td>
+</tr>
+<tr>
+<td><img src="docs/media/ghasts.jpg" alt="Ghasts shooting Deathsquitos over Valheim's Plains"><br><b>Ghasts vs Deathsquitos.</b> Minecraft's monsters hunt Valheim's creatures as far as they would hunt you, flyers included.</td>
+<td><img src="docs/media/bonemass.jpg" alt="Blazes and Nether mobs fighting Bonemass"><br><b>Bosses too.</b> Valheim's bosses fight Minecraft's armies (and lose to enough TNT).</td>
+</tr>
+<tr>
 <td width="50%"><img src="docs/media/cottage-depth.png" alt="A Minecraft cottage between Valheim's trees"><br><b>Build in Valheim.</b> Minecraft blocks stand on Valheim's terrain, and Valheim's trees, grass and rocks are drawn in front of them where they are nearer.</td>
 <td width="50%"><img src="docs/media/mobs-vs-creatures.png" alt="A Minecraft zombie fighting a Valheim Greydwarf"><br><b>Two bestiaries, one fight.</b> Minecraft's monsters hunt Valheim's creatures and Valheim's creatures fight back, with damage converted between the games.</td>
 </tr>

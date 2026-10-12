@@ -15,6 +15,9 @@ namespace MineHeim
         /// <summary>The orbit around the player's own look, degrees.</summary>
         internal static float Yaw, Pitch;
 
+        /// <summary>Tests and takes only (the "orbit" test command): the orbit is held without Alt.</summary>
+        internal static bool Scripted;
+
         private const float ReturnSpeed = 540f; // degrees a second back behind him once Alt is let go
         private static readonly System.Reflection.MethodInfo CollideRay2 = AccessTools.Method(typeof(GameCamera), "CollideRay2");
         private static readonly System.Reflection.MethodInfo OffsetedEyePos = AccessTools.Method(typeof(GameCamera), "GetOffsetedEyePos");
@@ -22,7 +25,7 @@ namespace MineHeim
         private static readonly object[] Args = new object[3];
 
         /// <summary>Alt held in play (no menu, no Minecraft screen, the mouse captured).</summary>
-        internal static bool Held =>
+        internal static bool Held => Scripted ||
             Plugin.FreeLookOn.Value && Keyboard.current != null && Keyboard.current.altKey.isPressed && Cursor.lockState == CursorLockMode.Locked &&
             !ScreenBridge.Open && Player.m_localPlayer != null;
 
