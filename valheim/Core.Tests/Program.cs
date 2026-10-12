@@ -444,6 +444,7 @@ namespace MineHeim.Core.Tests
                 "wood and gold tools work a tier below their Valheim twin (stone only, as in Minecraft)");
             Check(WeaponMap.IsOre("MineRock_Copper(Clone)") && WeaponMap.IsOre("mudpile") && WeaponMap.IsOre("Rock_3") == false &&WeaponMap.IsOre("rock4_forest") == false && WeaponMap.IsOre("silvervein"),
                 "ore deposits told from plain rock");
+            Check(Messages.World("Mid\"gard", 0x1A2B) == "{\"t\":\"vworld\",\"name\":\"Midgard\",\"id\":\"0000000000001a2b\"}", "vworld message: " + Messages.World("Mid\"gard", 0x1A2B));
             Check(Messages.ExplosionPoints(0, 4) == 57 && Math.Abs(Messages.ExplosionPoints(4, 4) - 22) < 1e-9 && Messages.ExplosionPoints(8, 4) == 0 && Messages.ExplosionPoints(9, 4) == 0,
                 "Minecraft's TNT: 57 at the centre, 22 four blocks out, none from eight");
             var pl = Messages.Projectiles("{\"t\":\"proj\",\"p\":[[12,\"arrow\",-1.500,64.250,3.000,9.0],[13,\"firework\",0.000,70.000,-2.250]]}");

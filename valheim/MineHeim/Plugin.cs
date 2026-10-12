@@ -286,6 +286,12 @@ namespace MineHeim
         internal static void ResetWorldState(string why)
         {
             Log.LogInfo("world state reset: " + why);
+            if (ZNet.instance != null && Player.m_localPlayer != null)
+            {
+                // each Valheim world has its own Minecraft world (Minecraft switches to it if another is open)
+                Link.Send(Messages.World(ZNet.instance.GetWorldName(), ZNet.instance.GetWorldUID()));
+            }
+
             Cells.Reset();
             Ground.Reset();
             Pieces.Reset();

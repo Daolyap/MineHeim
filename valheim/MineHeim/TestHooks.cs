@@ -302,6 +302,14 @@ namespace MineHeim
                         }
 
                         break;
+                    case "logout":
+                        // Valheim's own Logout -> Yes: back to the main menu (Minecraft stays); with mineheim-autojoin.txt, into another world
+                        if (Menu.instance != null)
+                        {
+                            HarmonyLib.Traverse.Create(Menu.instance).Method("OnLogoutYes").GetValue();
+                        }
+
+                        break;
                     case "nodeath":
                         NoDeath = w.Length > 1 && w[1] == "on";
                         Plugin.Log.LogInfo("test no-death guard " + (NoDeath ? "on" : "off"));

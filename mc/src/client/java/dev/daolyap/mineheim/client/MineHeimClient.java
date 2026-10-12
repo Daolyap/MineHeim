@@ -42,8 +42,6 @@ import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 
 public class MineHeimClient implements ClientModInitializer {
-	/** The world the host plays in: an empty (void) creative world, so only what the player builds is Minecraft. */
-	private static final String WORLD = "mineheim";
 	/** Run on the server once the player has joined (both game modes). */
 	private static final List<String> RULES = List.of(
 		"gamerule advance_time false",
@@ -84,7 +82,6 @@ public class MineHeimClient implements ClientModInitializer {
 	/** The Minecraft screen last reported to the host ("" = none). */
 	private static String reportedScreen = "";
 	private static boolean configured;
-	private static boolean worldRequested;
 	/** Server ticks until the setup commands run (the player isn't in the player list yet when JOIN fires). */
 	private static int setupIn = -1;
 	private static int respawnIn;
@@ -218,10 +215,7 @@ public class MineHeimClient implements ClientModInitializer {
 			configure(minecraft.options);
 		}
 
-		if (!worldRequested && minecraft.level == null && minecraft.gui.screen() instanceof TitleScreen && !Boolean.getBoolean("mineheim.noAutoWorld")) {
-			worldRequested = true;
-			openWorld(minecraft);
-		}
+		WorldSwitch.tick(minecraft, HostLink.connected());
 	}
 
 	/** Settings for sitting behind another game: keep running unfocused, and no sky/cloud/bobbing effects in the picture. */
@@ -247,14 +241,15 @@ public class MineHeimClient implements ClientModInitializer {
 		options.save();
 	}
 
-	private static void openWorld(final Minecraft minecraft) {
-		if (minecraft.getLevelSource().levelExists(WORLD)) {
-			MineHeim.LOG.info("opening world {}", WORLD);
-			minecraft.createWorldOpenFlows().openWorld(WORLD, () -> minecraft.gui.setScreen(new TitleScreen()));
+	/** Open the save `world` (WorldSwitch picks it: one per host world), creating it as an empty void world the first time. */
+	static void openWorld(final Minecraft minecraft, final String world) {
+		if (minecraft.getLevelSource().levelExists(world)) {
+			MineHeim.LOG.info("opening world {}", world);
+			minecraft.createWorldOpenFlows().openWorld(world, () -> minecraft.gui.setScreen(new TitleScreen()));
 		} else {
-			MineHeim.LOG.info("creating world {}", WORLD);
+			MineHeim.LOG.info("creating world {}", world);
 			LevelSettings settings = new LevelSettings("MineHeim", GameType.CREATIVE, LevelSettings.DifficultySettings.DEFAULT, true, WorldDataConfiguration.DEFAULT);
-			minecraft.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(0L, false, false), MineHeimClient::voidWorld, minecraft.gui.screen());
+			minecraft.createWorldOpenFlows().createFreshLevel(world, settings, new WorldOptions(0L, false, false), MineHeimClient::voidWorld, minecraft.gui.screen());
 		}
 	}
 

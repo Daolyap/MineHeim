@@ -215,8 +215,8 @@ namespace MineHeim
             var lines = new System.Collections.Generic.List<string>();
             if (Link.Connected)
             {
-                lines.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture, "MineHeim: Minecraft attached, {0:0} fps, its picture {1:0.0} frame(s) behind",
-                    PoseSender.Fps, MotionPrediction.LagFrames));
+                lines.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture, "MineHeim: Valheim {0:0} fps; Minecraft attached, {2:0} fps, its picture {1:0.0} frame(s) behind",
+                    PoseSender.Fps, MotionPrediction.LagFrames, PoseSender.McFps));
             }
             else
             {

@@ -226,7 +226,7 @@ namespace MineHeim
         }
 
         /// <summary>Valheim's frame rate over the last 5 s (the status key).</summary>
-        internal static float Fps;
+        internal static float Fps, McFps;
         private float _perfStart;
         private int _perfFrames;
         private long _perfCamStart;
@@ -241,11 +241,12 @@ namespace MineHeim
                 {
                     float offset = MotionPrediction.TakeOffset();
                     Fps = _perfFrames / (Time.unscaledTime - _perfStart);
+                    McFps = MotionPrediction.TakeMinecraftPictures() / (Time.unscaledTime - _perfStart);
                     Plugin.Log.LogInfo(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        "perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}, minecraft {5:0.0} frame(s) behind, steve lead {6:0} ms, steve offset {7}, steve drawn by {8}",
+                        "perf: {0:0.0} fps, {1} cam sent, link {2}, window {3}x{4}, minecraft {9:0.0} fps and {5:0.0} frame(s) behind, steve lead {6:0} ms, steve offset {7}, steve drawn by {8}",
                         _perfFrames / (Time.unscaledTime - _perfStart), _frame - _perfCamStart, Link.Connected ? "up" : "down", _viewW, _viewH,
                         MotionPrediction.LagFrames, MotionPrediction.Lead * 1000f, offset < 0f ? "n/a" : (offset * 100f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " cm",
-                        SteveAvatar.Native ? "valheim (skin: " + SteveAvatar.SkinSource + ")" : "minecraft"));
+                        SteveAvatar.Native ? "valheim (skin: " + SteveAvatar.SkinSource + ")" : "minecraft", McFps));
                 }
 
                 _perfStart = Time.unscaledTime;

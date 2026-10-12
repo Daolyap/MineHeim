@@ -76,6 +76,17 @@ namespace MineHeim
 
         public static float LagFrames => _lagFrames;
 
+        private static long _lastShown;
+        private static int _mcPictures;
+
+        /// <summary>Minecraft's new pictures since the last call (its frame rate over that time, as Valheim sees it).</summary>
+        public static int TakeMinecraftPictures()
+        {
+            int n = _mcPictures;
+            _mcPictures = 0;
+            return n;
+        }
+
         private static unsafe void MeasureDelay(long frame, Vector3 feet)
         {
             Actual[(int)(frame % History)] = feet;
@@ -108,6 +119,12 @@ namespace MineHeim
             }
 
             _lagFrames = Mathf.Lerp(_lagFrames, lag, 0.05f);
+            if (shown != _lastShown)
+            {
+                _lastShown = shown;
+                _mcPictures++; // a new picture from Minecraft: its frame rate as it reaches Valheim
+            }
+
             int i = (int)(shown % History);
             if (SentFrame[i] == shown)
             {

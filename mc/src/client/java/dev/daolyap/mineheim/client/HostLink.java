@@ -73,6 +73,11 @@ public final class HostLink extends WebSocketServer {
 		MineHeim.events = message -> instance.broadcast(message);
 	}
 
+	/** Whether a host is connected. */
+	static boolean connected() {
+		return instance != null && !instance.getConnections().isEmpty();
+	}
+
 	@Override
 	public void onStart() {
 		MineHeim.LOG.info("host link listening on 127.0.0.1:{}", this.getPort());
@@ -136,6 +141,7 @@ public final class HostLink extends WebSocketServer {
 					m.has("player") && m.get("player").getAsBoolean());
 				case "mobfight" -> Creatures.fight = m.get("on").getAsBoolean();
 				case "heldreq" -> HeldItems.request();
+				case "vworld" -> WorldSwitch.host(m.get("name").getAsString(), m.get("id").getAsString());
 				case "vinv" -> ValheimBag.onInventory(m);
 				case "vicon" -> ValheimBag.onIcon(m);
 				case "skinreq" -> SkinSender.request(m.has("mode") ? m.get("mode").getAsString() : "steve", m.has("herobrine") && m.get("herobrine").getAsBoolean());

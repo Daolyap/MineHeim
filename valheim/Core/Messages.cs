@@ -339,6 +339,12 @@ namespace MineHeim.Core
         /// Viking's max health over Steve's 20 (never under 25/20). A hit that would take 15% of Steve takes 15% of the
         /// Viking, and the same rate turns Minecraft's damage into Valheim's for its creatures and back.
         /// </summary>
+        /// <summary>{"t":"vworld","name":"Midgard","id":"1a2b3c4d5e6f7a8b"}: the host's world, so Minecraft opens its own world for it.</summary>
+        public static string World(string name, long uid)
+        {
+            return "{\"t\":\"vworld\",\"name\":\"" + (name ?? "").Replace("\\", "").Replace("\"", "") + "\",\"id\":\"" + uid.ToString("x16", Inv) + "\"}";
+        }
+
         public static double HealthPerPoint(double vikingMaxHealth)
         {
             return Math.Max(25.0, vikingMaxHealth) / 20.0;
