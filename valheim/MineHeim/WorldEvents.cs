@@ -214,6 +214,7 @@ namespace MineHeim
                 float minecraft = (float)(Messages.ExplosionPoints(d, radiusBlocks) * rate);
                 hit.m_damage.m_blunt = Mathf.Max(Plugin.ExplosionDamage.Value * falloff, minecraft) * strength;
                 hit.m_staggerMultiplier = 2f;
+                hit.m_blockable = true; // a shield raised toward the blast stops it, as in Minecraft
                 c.Damage(hit);
                 hurt++;
             }

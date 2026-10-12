@@ -218,7 +218,8 @@ namespace MineHeim.Core.Tests
             Check(FoodMap.Resolve("bread", all) == "Bread" && FoodMap.Resolve("minecraft:cooked_beef", all) == "CookedDeerMeat", "cooked food = its Valheim twin");
             // a food with no twin is its closest relative by nutrition: raw beef (3) grilled meat, raw chicken (2) a berry
             Check(FoodMap.Candidates("beef").Length == 0 && FoodMap.Resolve("beef", 3, all) == "NeckTailGrilled", "raw beef = grilled neck tail");
-            Check(FoodMap.Resolve("chicken", 2, all) == "Raspberry" && FoodMap.Resolve("rotten_flesh", 4, all) == "NeckTailGrilled", "snacks = berries, rotten flesh = plain meat");
+            Check(FoodMap.Resolve("chicken", 2, all) == "Raspberry" && FoodMap.Resolve("rotten_flesh", 4, all) == "Pukeberries", "snacks = berries, rotten flesh = Pukeberries");
+            Check(FoodMap.Resolve("spider_eye", 2, all) == "Pukeberries" && FoodMap.Resolve("minecraft:carrot", 3, all) == "Carrot", "poison = Pukeberries; a carrot is a carrot");
             Check(FoodMap.Resolve("some_new_food", 12, all) == "TurnipStew" && FoodMap.Resolve("cooked_beef", 8, all) == "CookedDeerMeat", "a big new food = a stew; a twin wins over nutrition");
             foreach (string none in new[] { "cobblestone", "" })
             {

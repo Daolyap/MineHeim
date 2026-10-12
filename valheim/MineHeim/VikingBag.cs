@@ -72,7 +72,8 @@ namespace MineHeim
             }
         }
 
-        /// <summary>{"t":"vcross","x":..,"y":..}: Minecraft wants this item: the Viking drops it, and it crosses as its twin.</summary>
+        /// <summary>{"t":"vcross","x":..,"y":..}: Minecraft wants this item: it leaves the Viking's bag and goes straight into
+        /// Steve's inventory as its twin (no throw: nothing to pick up, nothing lost on the ground).</summary>
         internal static void OnCross(string json)
         {
             Player player = Player.m_localPlayer;
@@ -87,7 +88,19 @@ namespace MineHeim
                 return;
             }
 
-            player.DropItem(player.GetInventory(), item, item.m_stack); // ItemBridge sends what has a twin across
+            string mcId;
+            int mcCount;
+            if (item.m_dropPrefab == null || item.m_quality > 1 || !ItemBridge.Map.ToMinecraft(item.m_dropPrefab.name, item.m_stack, out mcId, out mcCount) || mcCount <= 0)
+            {
+                player.Message(MessageHud.MessageType.TopLeft, Name(item) + " has no Minecraft twin");
+                return;
+            }
+
+            string prefab = item.m_dropPrefab.name;
+            int stack = item.m_stack;
+            player.GetInventory().RemoveItem(item);
+            Link.Send(Messages.Command("give @a " + ItemMap.Normalize(mcId) + " " + mcCount));
+            Plugin.Log.LogInfo(string.Format("bag to Minecraft: {0} {1} -> {2} {3}", stack, prefab, mcCount, mcId));
             _next = 0f;
         }
 

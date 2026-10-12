@@ -21,6 +21,11 @@ sampler sPreUi { Texture = VcPreUiTex; MinFilter = POINT; MagFilter = POINT; Add
 // Set by the add-on: this frame's pre-UI copy is there (else the back buffer, HUD and all, stands in for it).
 uniform bool PreUi = false;
 
+float3 pre_ui(float2 uv)
+{
+	return tex2Dlod(sPreUi, float4(uv, 0, 0)).rgb;
+}
+
 // x = near, y = far, z = flags (1: [0,1] depth, 2: rows bottom-up, 4: reversed Z). Set by the add-on.
 uniform float3 McPlanes = float3(0.05, 2048.0, 7.0);
 // Valheim's camera near/far clip. Set by the add-on.
@@ -115,22 +120,23 @@ float luma(float3 c)
 /// Valheim's world as its camera drew it, without its HUD when the add-on could copy it.
 float3 host_world(float2 uv)
 {
-	return PreUi ? tex2Dlod(sPreUi, float4(uv, 0, 0)).rgb : tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
+	return PreUi ? pre_ui(uv) : tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
 }
 
 /// Valheim's HUD put back over the finished world: whatever it changed in Valheim's own picture (the back buffer against the
-/// pre-UI copy). Faint changes (a see-through panel darkening what is behind) are added to the world as a change; strong
-/// ones (text, icons, bars) are Valheim's pixel itself.
+/// pre-UI copy) is Valheim's pixel itself; only the faintest changes (the soft edge of a shadow) are added to the world as a
+/// change. Nearly all of the HUD is opaque, and a pixel of it that happens to look like the scenery behind it must not
+/// let a block through.
 float3 with_hud(float3 world, float2 uv)
 {
 	if (!PreUi)
 		return world;
 	const float3 q = tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
-	const float3 delta = q - tex2Dlod(sPreUi, float4(uv, 0, 0)).rgb;
+	const float3 delta = q - pre_ui(uv);
 	const float d = max(abs(delta.r), max(abs(delta.g), abs(delta.b)));
 	if (d < 1.5 / 255.0)
 		return world;
-	return lerp(saturate(world + delta), q, smoothstep(0.12, 0.4, d));
+	return lerp(saturate(world + delta), q, smoothstep(0.03, 0.1, d));
 }
 
 float4 PS_Light(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target

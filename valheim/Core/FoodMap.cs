@@ -13,12 +13,17 @@ namespace MineHeim.Core
     {
         private static readonly Dictionary<string, string[]> Foods = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
+            // poisonous in Minecraft: Valheim's own berries that make you throw up
+            { "spider_eye", new[] { "Pukeberries", "Raspberry" } },
+            { "poisonous_potato", new[] { "Pukeberries", "Raspberry" } },
+            { "pufferfish", new[] { "Pukeberries", "Raspberry" } },
+            { "rotten_flesh", new[] { "Pukeberries", "NeckTailGrilled" } },
             // Meadows
             { "sweet_berries", new[] { "Raspberry" } },
             { "apple", new[] { "Raspberry" } },
             { "melon_slice", new[] { "Raspberry" } },
-            { "carrot", new[] { "Raspberry" } },
-            { "potato", new[] { "Raspberry" } },
+            { "carrot", new[] { "Carrot", "Raspberry" } },
+            { "potato", new[] { "Onion", "Raspberry" } },
             { "beetroot", new[] { "Raspberry" } },
             { "dried_kelp", new[] { "Raspberry" } },
             { "cookie", new[] { "Honey", "Raspberry" } },

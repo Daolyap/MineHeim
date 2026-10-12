@@ -6,8 +6,10 @@
 // comes from the plugin through the shared memory "Local\MineHeimHostPose" instead of from a game script. A
 // render-thread marker (VCRenderEvent, queued by the plugin into the main camera's command stream) says which frame is
 // being drawn, so the pose used for re-projection is the one that frame was rendered with. A second one (VCBeforeUi,
-// after the main camera is done) copies Valheim's picture before its HUD is drawn on top: the effect composites
-// Minecraft into that copy and puts the HUD (creature names and health, damage numbers, messages) back over it.
+// after the main camera is done) copies Valheim's picture before its HUD is drawn on top: the camera draws into a
+// picture of its own, Valheim's HUD is drawn into that same picture after it, and Unity's final blit puts it on screen.
+// The copy is of whatever is bound at the marker. The effect composites Minecraft into that copy and puts the HUD
+// (creature names and health, damage numbers, messages) back over it.
 #include <windows.h>
 #include <algorithm>
 #include <atomic>
@@ -80,6 +82,10 @@ namespace
 	// frames ReShade composited (counted in on_begin_effects) and the frame the copy was made in: only this frame's counts
 	std::atomic<int64_t> g_effectFrames{0}, g_preUiFrame{-1};
 	std::atomic<int32_t> g_preUiCopies{0};
+	// the render target bound when a draw last set one (render thread): at the marker, the camera's picture
+	resource g_lastTarget = {0};
+	char g_preUiSource[96] = {};
+	void copy_pre_ui(effect_runtime *runtime, command_list *cmd, resource back);
 	uint32_t g_width = 0, g_height = 0;
 	bool g_hasFrame = false;
 	float g_mcNear = 0.05f, g_mcFar = 1024.0f;
@@ -448,11 +454,11 @@ namespace
 		if (GetTickCount() >= g_nextStatus)
 		{
 			g_nextStatus = GetTickCount() + 5000;
-			char line[512];
-			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u heat=%.2f end=%.2f preUi=%d (%d copies, %ux%u) -> active=%d",
+			char line[768];
+			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u heat=%.2f end=%.2f preUi=%d (%d copies, %ux%u, from %s) -> active=%d",
 				(g_frameView != nullptr && g_poseView != nullptr) ? 1 : 0, host.valid ? 1 : 0, host.flags, fresh ? 1 : 0, mcFresh ? 1 : 0, g_hasFrame ? 1 : 0,
 				int(g_renderFrame.load()), int(g_markerCalls.load()), (long long)host.frame, (long long)g_newestPoseFrame.load(), (long long)g_mcPose.frame, g_width, g_height,
-				host.heat, host.end, preUi ? 1 : 0, int(g_preUiCopies.load()), g_preUiWidth, g_preUiHeight, (on && g_hasFrame) ? 1 : 0);
+				host.heat, host.end, preUi ? 1 : 0, int(g_preUiCopies.load()), g_preUiWidth, g_preUiHeight, g_preUiSource[0] ? g_preUiSource : "-", (on && g_hasFrame) ? 1 : 0);
 			reshade::log::message(reshade::log::level::info, line);
 		}
 		if (on)
@@ -546,11 +552,10 @@ namespace
 		g_preUiFormat = format::unknown;
 	}
 
-	/// Copy the back buffer as Valheim's camera left it (render thread, before the HUD is drawn).
-	void copy_pre_ui(effect_runtime *runtime)
+	/// Copy Valheim's picture as its camera left it (render thread, before the HUD is drawn into it).
+	void copy_pre_ui(effect_runtime *runtime, command_list *cmd, resource back)
 	{
 		device *dev = runtime->get_device();
-		const resource back = runtime->get_current_back_buffer();
 		if (back.handle == 0)
 			return;
 		const resource_desc desc = dev->get_resource_desc(back);
@@ -579,7 +584,6 @@ namespace
 		}
 		if (g_preUi.tex.handle == 0)
 			return;
-		command_list *cmd = runtime->get_command_queue()->get_immediate_command_list();
 		cmd->barrier(back, resource_usage::render_target, resource_usage::copy_source);
 		cmd->barrier(g_preUi.tex, resource_usage::shader_resource, resource_usage::copy_dest);
 		cmd->copy_resource(back, g_preUi.tex);
@@ -587,6 +591,11 @@ namespace
 		cmd->barrier(back, resource_usage::copy_source, resource_usage::render_target);
 		g_preUiFrame.store(g_effectFrames.load(std::memory_order_acquire), std::memory_order_release);
 		g_preUiCopies.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void on_bind_targets(command_list *cmd, uint32_t count, const resource_view *rtvs, resource_view)
+	{
+		g_lastTarget = count > 0 && rtvs != nullptr && rtvs[0].handle != 0 ? cmd->get_device()->get_resource_from_view(rtvs[0]) : resource{0};
 	}
 
 	void on_init_effect_runtime(effect_runtime *runtime)
@@ -622,8 +631,18 @@ extern "C" __declspec(dllexport) void __stdcall VCRenderEvent(int eventId)
 // Valheim's world is in the back buffer, its HUD is not yet.
 extern "C" __declspec(dllexport) void __stdcall VCBeforeUi(int)
 {
-	if (effect_runtime *runtime = g_runtime.load(std::memory_order_acquire))
-		copy_pre_ui(runtime);
+	effect_runtime *runtime = g_runtime.load(std::memory_order_acquire);
+	if (runtime == nullptr)
+		return;
+	const resource back = runtime->get_current_back_buffer();
+	const resource source = g_lastTarget.handle != 0 ? g_lastTarget : back;
+	if (g_preUiSource[0] == 0)
+	{
+		const resource_desc d = runtime->get_device()->get_resource_desc(source);
+		std::snprintf(g_preUiSource, sizeof(g_preUiSource), "%s %ux%u format %u", source == back ? "the back buffer" : "the camera's picture",
+			d.texture.width, d.texture.height, unsigned(d.texture.format));
+	}
+	copy_pre_ui(runtime, runtime->get_command_queue()->get_immediate_command_list(), source);
 }
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
@@ -635,6 +654,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 			return FALSE;
 		QueryPerformanceFrequency(&g_qpcFreq);
 		reshade::register_event<reshade::addon_event::init_effect_runtime>(on_init_effect_runtime);
+		reshade::register_event<reshade::addon_event::bind_render_targets_and_depth_stencil>(on_bind_targets);
 		reshade::register_event<reshade::addon_event::reshade_begin_effects>(on_begin_effects);
 		reshade::register_event<reshade::addon_event::reshade_present>(on_present);
 		reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(on_reloaded_effects);

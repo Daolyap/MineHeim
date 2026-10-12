@@ -203,13 +203,13 @@ public final class ValheimBag {
 		g.pose().translate(o[0], o[1]);
 		g.pose().scale(o[2], o[2]);
 		try {
-			drawPanel(g, size[0], size[1], mouseX, mouseY);
+			drawPanel(g, size[0], size[1], mouseX, mouseY, screen instanceof CreativeModeInventoryScreen);
 		} finally {
 			g.pose().popMatrix();
 		}
 	}
 
-	private static void drawPanel(final GuiGraphicsExtractor g, final int w, final int h, final int mouseX, final int mouseY) {
+	private static void drawPanel(final GuiGraphicsExtractor g, final int w, final int h, final int mouseX, final int mouseY, final boolean creative) {
 		int x0 = 0, y0 = 0;
 		int[] o = {0, 0, w, h};
 		g.fill(x0, y0, x0 + o[2], y0 + o[3], 0xE0201810);
@@ -242,6 +242,11 @@ public final class ValheimBag {
 				hovered = cell;
 				g.fill(x, y, x + 16, y + 16, 0x40FFFFFF);
 			}
+		}
+
+		if (hovered == null && creative) {
+			g.text(Minecraft.getInstance().font, "click: onto the hotbar", x0 + 4, y0 + o[3] + 2, 0xFFB0A080, true);
+			g.text(Minecraft.getInstance().font, "Creative: nothing crosses", x0 + 4, y0 + o[3] + 12, 0xFFB0A080, true);
 		}
 
 		if (hovered != null) {
@@ -314,38 +319,33 @@ public final class ValheimBag {
 		return true;
 	}
 
-	/** A stand-in for `cell` on the hotbar: the selected slot if it is free (or a stand-in), else the first free one. */
+	/**
+	 * A stand-in for `cell` in the selected hotbar slot, so it is in hand at once (the hammer builds as soon as the screen
+	 * closes). What was in that slot moves into the inventory; with no room for it, nothing changes.
+	 */
 	private static void toHotbar(final Minecraft minecraft, final Cell cell) {
 		if (minecraft.player == null) {
 			return;
 		}
 
-		Inventory client = minecraft.player.getInventory();
-		int target = -1;
-		int selected = client.getSelectedSlot();
-		if (client.getItem(selected).isEmpty() || !standIn(client.getItem(selected)).isEmpty()) {
-			target = selected;
-		} else {
-			for (int i = 0; i < Inventory.SELECTION_SIZE; i++) {
-				if (client.getItem(i).isEmpty()) {
-					target = i;
-					break;
-				}
-			}
-		}
-
-		if (target < 0) {
-			minecraft.player.sendOverlayMessage(Component.literal("The hotbar is full: free a slot for " + cell.name()));
-			return;
-		}
-
-		int slot = target;
+		int slot = minecraft.player.getInventory().getSelectedSlot();
 		onServer(p -> {
 			Inventory inv = p.getInventory();
 			for (int i = 0; i < Inventory.SELECTION_SIZE; i++) {
-				if (standIn(inv.getItem(i)).equals(cell.prefab())) {
+				if (i != slot && standIn(inv.getItem(i)).equals(cell.prefab())) {
 					inv.setItem(i, ItemStack.EMPTY); // one stand-in per item
 				}
+			}
+
+			ItemStack there = inv.getItem(slot);
+			if (!there.isEmpty() && standIn(there).isEmpty()) {
+				int free = inv.getFreeSlot();
+				if (free < 0) {
+					p.sendOverlayMessage(Component.literal("No room in the inventory for " + there.getHoverName().getString()));
+					return;
+				}
+
+				inv.setItem(free, there);
 			}
 
 			inv.setItem(slot, makeStandIn(cell.prefab(), cell.name()));

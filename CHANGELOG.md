@@ -30,7 +30,8 @@
 - **One inventory.** Tab in Minecraft mode shows the Viking's bag beside Minecraft's inventory, with Valheim's own icons. Click a
   Valheim item to put a stand-in for it on Steve's hotbar: selected, the Viking holds the real item and the mouse is Valheim's, so
   the hammer and hoe build, Valheim weapons attack and food is eaten, without leaving Minecraft mode. Items with a twin move across
-  with a shift-click (or by putting them down on the bag). **[open]** shows the Viking's own inventory.
+  with a shift-click (straight into Steve's inventory) or by putting them down on the bag. A stand-in goes into the selected slot
+  (what was there moves into the inventory). **[open]** shows the Viking's own inventory.
 - **Valheim draws Steve itself**, on the Viking in the same frame, so he no longer trails or doubles up when you run or turn. He
   walks, crouches, sits, turns his head and swings his arm when Minecraft does (`Steve.Avatar = Minecraft` brings back the old way).
 - **Steve holds and wears what he has:** held items in both hands and armour, exactly as Minecraft draws them; leather keeps its dye.
@@ -53,13 +54,14 @@
 - **Minecraft's mobs and Valheim's creatures really fight.** Monsters hunt creatures as far as they would hunt you, piglins and
   hoglins fight back, and a ghast's or blaze's fireball that passes close to a creature bursts on it (a Gjall drifting out of
   the way is still hit). Zombified piglins and endermen only fight back, as in Minecraft.
+- **A raised shield blocks explosions** facing it (TNT, creepers, fireballs), as in Minecraft.
 - **Minecraft's mobs fight the Viking too**, at Minecraft's pace (after a hit only a harder one counts for half a second).
   Creative only protects Steve: as the Viking (F7 off), Minecraft's monsters hunt you.
 
 ### Food
 
-- **Eating as Steve feeds the Viking** (Survival): a Minecraft food fills one of the Viking's food slots as its Valheim twin, or as
-  the Valheim food closest to how much it feeds in Minecraft (raw meat, rotten flesh, anything else).
+- **Eating as Steve feeds the Viking** (Survival): a Minecraft food fills one of the Viking's food slots as its Valheim twin (a
+  carrot is a carrot), poisonous ones as Pukeberries, anything else as the Valheim food closest to how much it feeds.
 
 ### Worlds, picture and controls
 
