@@ -400,7 +400,7 @@ namespace MineHeim
                     Vector3 target;
                     float d = DistanceTo(c, eye, out target);
                     Vector3 to = target - eye;
-                    if (d > Plugin.MeleeReach.Value || Vector3.Dot(to / Mathf.Max(d, 0.01f), aim) < 0.3f)
+                    if (d > Plugin.MeleeReach.Value || (Vector3.Dot(to / Mathf.Max(d, 0.01f), aim) < 0.3f && !OnCrosshair(c, eye, aim)))
                     {
                         continue;
                     }
@@ -540,6 +540,7 @@ namespace MineHeim
             _targets.Clear();
             float minDot = Mathf.Cos(SteveWeapons.HalfArc(weapon) * Mathf.Deg2Rad);
             float nearest = float.MaxValue;
+            bool nearestAimed = false;
             foreach (Character c in new List<Character>(Character.GetAllCharacters()))
             {
                 if (c == null || c == player || c.IsDead() || MobBridge.IsBody(c) || (c.IsTamed() && !c.IsPlayer()))
@@ -547,9 +548,16 @@ namespace MineHeim
                     continue; // (a Minecraft mob: Steve's hit lands on it in Minecraft itself; tamed animals are friends)
                 }
 
+                // in reach, and either under the crosshair or inside the weapon's arc around it
                 Vector3 target;
                 float d = DistanceTo(c, eye, out target);
-                if (d > Plugin.MeleeReach.Value || Vector3.Dot((target - eye) / Mathf.Max(d, 0.01f), aim) < minDot)
+                if (d > Plugin.MeleeReach.Value)
+                {
+                    continue;
+                }
+
+                bool aimed = OnCrosshair(c, eye, aim);
+                if (!aimed && Vector3.Dot((target - eye) / Mathf.Max(d, 0.01f), aim) < minDot)
                 {
                     continue;
                 }
@@ -558,9 +566,11 @@ namespace MineHeim
                 {
                     _targets.Add(new KeyValuePair<Character, Vector3>(c, target));
                 }
-                else if (d < nearest)
+                else if ((aimed && !nearestAimed) || (aimed == nearestAimed && d < nearest))
                 {
+                    // one target: the creature under the crosshair before a nearer one at the edge of the arc
                     nearest = d;
+                    nearestAimed = aimed;
                     _targets.Clear();
                     _targets.Add(new KeyValuePair<Character, Vector3>(c, target));
                 }
@@ -584,9 +594,9 @@ namespace MineHeim
             }
 
             player.RaiseSkill(weapon.Skill, 1f);
-            Plugin.Log.LogInfo(string.Format("{0} swing as {1} (q{2}): {3} creature(s) hit for {4:0.0} each before resistances{5}{6}", item, weapon.Prefab,
+            Plugin.Log.LogInfo(string.Format("{0} swing as {1} (q{2}): {3} creature(s) hit for {4:0.0} each before resistances{5}{6}{7}", item, weapon.Prefab,
                 weapon.Item.m_quality, _targets.Count, dealt, fire > 0f ? string.Format(", {0:0.0} of it fire", fire) : "",
-                spirit > 0f ? string.Format(", {0:0.0} of it spirit", spirit) : ""));
+                spirit > 0f ? string.Format(", {0:0.0} of it spirit", spirit) : "", nearestAimed ? " (the one on the crosshair)" : ""));
             return true;
         }
 
@@ -803,6 +813,42 @@ namespace MineHeim
             }
 
             return best == float.MaxValue ? Vector3.Distance(closest, from) : best;
+        }
+
+        /// <summary>How far the crosshair may miss a creature's colliders and still hit it (Minecraft's own hitboxes are as forgiving).</summary>
+        private const float CrosshairMargin = 0.3f;
+
+        /// <summary>
+        /// Whether the crosshair (the camera's ray, not the Viking's eyes: the camera sits behind and above him) passes through
+        /// the character's colliders in front of the Viking. Low animals are where the two disagree most.
+        /// </summary>
+        private static bool OnCrosshair(Character c, Vector3 eye, Vector3 aim)
+        {
+            Transform cam = GameCamera.instance != null ? GameCamera.instance.transform : null;
+            if (cam == null)
+            {
+                return false;
+            }
+
+            var ray = new Ray(cam.position, aim);
+            float behind = Vector3.Dot(eye - cam.position, aim) - 1f; // (nothing between the camera and the Viking)
+            foreach (Collider col in c.GetComponentsInChildren<Collider>())
+            {
+                if (!col.enabled || col.isTrigger)
+                {
+                    continue;
+                }
+
+                Bounds b = col.bounds;
+                b.Expand(CrosshairMargin * 2f);
+                float along;
+                if (b.IntersectRay(ray, out along) && along >= behind)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static HitData MakeHit(Vector3 point, Vector3 dir, float push)

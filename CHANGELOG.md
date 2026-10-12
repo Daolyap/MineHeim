@@ -16,6 +16,8 @@
 - **Wood and gold pickaxes mine only stone**, as in Minecraft (ore is too hard). A pickaxe digs Valheim's ground only on a
   full swing (no spam digging).
 - **Only swords sweep**; an axe, a club or a pickaxe hits the one creature it is swung at.
+- **Steve hits what the crosshair is on.** A creature under the crosshair and in reach is always hit; before, the swing
+  was aimed from the Viking's eyes, which sit below the camera, so a low animal could need aiming above it.
 - **Minecraft's mobs and Valheim's creatures really fight.** Piglins and hoglins fight back (they could not see Valheim's
   invisible creatures past 2 blocks), monsters hunt creatures as far as they would hunt you (a ghast 64+ blocks), and flying
   creatures (a Gjall) stand in Minecraft where their body is, so a ghast's fireballs find them. Zombified piglins and
