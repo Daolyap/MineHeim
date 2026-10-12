@@ -34,10 +34,11 @@ namespace MineHeim
                 return;
             }
 
-            string prefab = FoodMap.Resolve(item, p => FoodOf(p) != null);
+            // its Valheim twin, or a food of the same standing (raw meat, rotten flesh, a newer Minecraft's food)
+            string prefab = FoodMap.Resolve(item, Messages.IntValue(json, "n", 0), p => FoodOf(p) != null);
             if (prefab.Length == 0)
             {
-                Plugin.Log.LogInfo("steve ate " + item + ": no Valheim food (raw, rotten or poisonous)");
+                Plugin.Log.LogInfo("steve ate " + item + ": no Valheim food");
                 return;
             }
 

@@ -216,9 +216,19 @@ namespace MineHeim.Core.Tests
         {
             Func<string, bool> all = p => true;
             Check(FoodMap.Resolve("bread", all) == "Bread" && FoodMap.Resolve("minecraft:cooked_beef", all) == "CookedDeerMeat", "cooked food = its Valheim twin");
-            foreach (string bad in new[] { "beef", "porkchop", "chicken", "cod", "rotten_flesh", "spider_eye", "poisonous_potato", "pufferfish", "cobblestone", "" })
+            // a food with no twin is its closest relative by nutrition: raw beef (3) grilled meat, raw chicken (2) a berry
+            Check(FoodMap.Candidates("beef").Length == 0 && FoodMap.Resolve("beef", 3, all) == "NeckTailGrilled", "raw beef = grilled neck tail");
+            Check(FoodMap.Resolve("chicken", 2, all) == "Raspberry" && FoodMap.Resolve("rotten_flesh", 4, all) == "NeckTailGrilled", "snacks = berries, rotten flesh = plain meat");
+            Check(FoodMap.Resolve("some_new_food", 12, all) == "TurnipStew" && FoodMap.Resolve("cooked_beef", 8, all) == "CookedDeerMeat", "a big new food = a stew; a twin wins over nutrition");
+            foreach (string none in new[] { "cobblestone", "" })
             {
-                Check(FoodMap.Candidates(bad).Length == 0 && FoodMap.Resolve(bad, all) == "", "feeds nothing: '" + bad + "'");
+                Check(FoodMap.Resolve(none, 0, all) == "" && FoodMap.Resolve(none, all) == "", "feeds nothing: '" + none + "'");
+            }
+
+            // every nutrition has a fallback that is surely in the game (Meadows)
+            for (int n = 1; n <= 20; n++)
+            {
+                Check(FoodMap.Resolve("x", n, p => p == "Raspberry" || p == "CookedMeat") != "", "nutrition " + n + " feeds something");
             }
 
             // a food the game lacks: the next one on its list

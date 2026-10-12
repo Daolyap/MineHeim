@@ -28,8 +28,9 @@ namespace MineHeim
         private Camera _camera;
         private long _frame;
         // the ReShade add-on's render-thread marker (see UpdateMarker)
-        private IntPtr _renderEvent;
-        private CommandBuffer _marker;
+        private IntPtr _renderEvent, _beforeUiEvent;
+        private CommandBuffer _marker, _beforeUi;
+        private Camera _markedCamera;
         private float _nextLookup;
         private bool _wasConnected;
         private int _viewW, _viewH;
@@ -451,20 +452,57 @@ namespace MineHeim
 
                 _renderEvent = proc;
                 _marker = new CommandBuffer { name = "mineheim frame marker" };
+                // after the camera is done and before Valheim's HUD: the add-on copies the picture without the HUD, so
+                // Minecraft goes in under the HUD (an older add-on has no such export: Minecraft then covers the HUD)
+                _beforeUiEvent = GetProcAddress(module, "VCBeforeUi");
+                if (_beforeUiEvent != IntPtr.Zero)
+                {
+                    _beforeUi = new CommandBuffer { name = "mineheim before the HUD" };
+                    _beforeUi.IssuePluginEvent(_beforeUiEvent, 0);
+                }
+            }
+
+            if (cam != _markedCamera)
+            {
+                // (a new world brings a new main camera)
+                if (_markedCamera != null)
+                {
+                    if (_beforeUi != null)
+                    {
+                        _markedCamera.RemoveCommandBuffer(CameraEvent.AfterEverything, _beforeUi);
+                    }
+
+                    foreach (CameraEvent e in MarkerEvents)
+                    {
+                        _markedCamera.RemoveCommandBuffer(e, _marker);
+                    }
+                }
+
                 // which events run depends on the camera's rendering path; the last one to run before Present wins,
                 // so attach to several (the add-on counts how often the marker fires)
-                foreach (CameraEvent e in new[] { CameraEvent.BeforeForwardOpaque, CameraEvent.BeforeGBuffer, CameraEvent.BeforeDepthTexture,
-                                                  CameraEvent.BeforeImageEffects, CameraEvent.AfterEverything })
+                foreach (CameraEvent e in MarkerEvents)
                 {
                     cam.AddCommandBuffer(e, _marker);
                 }
 
-                Plugin.Log.LogInfo("render marker attached to the main camera (rendering path " + cam.actualRenderingPath + ")");
+                if (_beforeUi != null)
+                {
+                    cam.AddCommandBuffer(CameraEvent.AfterEverything, _beforeUi); // after the marker there
+                }
+
+                _markedCamera = cam;
+                Plugin.Log.LogInfo("render marker attached to the main camera (rendering path " + cam.actualRenderingPath + ")" +
+                    (_beforeUi != null ? ", Valheim's HUD stays over Minecraft" : ", the add-on is older: Minecraft covers Valheim's HUD"));
             }
 
             _marker.Clear();
             _marker.IssuePluginEvent(_renderEvent, (int)(frame & 0x7fffffff));
         }
+
+        private static readonly CameraEvent[] MarkerEvents =
+        {
+            CameraEvent.BeforeForwardOpaque, CameraEvent.BeforeGBuffer, CameraEvent.BeforeDepthTexture, CameraEvent.BeforeImageEffects, CameraEvent.AfterEverything
+        };
 
         // ------------------------------------------------------------------ alignment test pillar
 

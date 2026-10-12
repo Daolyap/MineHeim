@@ -2,6 +2,6 @@
 	"required": true,
 	"package": "dev.daolyap.mineheim.mixin",
 	"compatibilityLevel": "JAVA_25",
-	"mixins": ["LevelMixin", "MobMixin", "PlayerMixin", "PortalMixin", "ServerExplosionMixin", "ServerPlayerMixin", "ServerPlayerGameModeMixin", "ProjectileMixin", "AbstractArrowAccessor", "FoodPropertiesMixin"],
+	"mixins": ["LevelMixin", "MobMixin", "PlayerMixin", "PortalMixin", "ServerExplosionMixin", "ServerPlayerMixin", "ServerPlayerGameModeMixin", "ProjectileMixin", "AbstractArrowAccessor", "ProjectileInvoker", "FoodPropertiesMixin"],
 	"injectors": { "defaultRequire": 1 }
 }

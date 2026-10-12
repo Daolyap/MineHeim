@@ -113,7 +113,9 @@ public final class ClientInput {
 				double x = MouseHandler.getScaledXPos(minecraft.getWindow(), minecraft.mouseHandler.xpos());
 				double y = MouseHandler.getScaledYPos(minecraft.getWindow(), minecraft.mouseHandler.ypos());
 				MouseButtonEvent event = new MouseButtonEvent(x, y, new MouseButtonInfo(m.get("b").getAsInt(), mods(m)));
-				boolean handled = m.get("down").getAsBoolean() ? screen.mouseClicked(event, false) : screen.mouseReleased(event);
+				boolean down = m.get("down").getAsBoolean();
+				// (a call straight to the screen passes Fabric's mouse events by, which fire in MouseHandler: the bag asks first)
+				boolean handled = ValheimBag.hostButton(screen, event, down) || (down ? screen.mouseClicked(event, false) : screen.mouseReleased(event));
 				screen.afterMouseAction();
 				MineHeim.LOG.info("screen {} button {} {} at {},{}: {}", screen.getClass().getSimpleName(), m.get("b").getAsInt(),
 					m.get("down").getAsBoolean() ? "down" : "up", (int) x, (int) y, handled);

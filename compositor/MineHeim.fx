@@ -6,6 +6,8 @@
 //
 // world: premultiplied RGBA, drawn where Minecraft is nearer than Valheim's depth buffer (both in metres).
 // overlay: Minecraft's hand, HUD and screens, always on top.
+// pre-UI: Valheim's picture before its HUD was drawn (the add-on copies it mid-frame). Minecraft goes into that picture,
+// and Valheim's HUD (creature names and health, damage numbers, messages) goes back on top, so blocks never hide it.
 #include "ReShade.fxh"
 
 texture MCWorldTex : VCWORLD;
@@ -14,6 +16,10 @@ texture MCOverlayTex : VCOVERLAY;
 sampler sWorld { Texture = MCWorldTex; AddressU = CLAMP; AddressV = CLAMP; };
 sampler sDepth { Texture = MCDepthTex; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
 sampler sOverlay { Texture = MCOverlayTex; AddressU = CLAMP; AddressV = CLAMP; };
+texture VcPreUiTex : VCPREUI;
+sampler sPreUi { Texture = VcPreUiTex; MinFilter = POINT; MagFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; };
+// Set by the add-on: this frame's pre-UI copy is there (else the back buffer, HUD and all, stands in for it).
+uniform bool PreUi = false;
 
 // x = near, y = far, z = flags (1: [0,1] depth, 2: rows bottom-up, 4: reversed Z). Set by the add-on.
 uniform float3 McPlanes = float3(0.05, 2048.0, 7.0);
@@ -106,9 +112,30 @@ float luma(float3 c)
 	return dot(c, float3(0.2126, 0.7152, 0.0722));
 }
 
+/// Valheim's world as its camera drew it, without its HUD when the add-on could copy it.
+float3 host_world(float2 uv)
+{
+	return PreUi ? tex2Dlod(sPreUi, float4(uv, 0, 0)).rgb : tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
+}
+
+/// Valheim's HUD put back over the finished world: whatever it changed in Valheim's own picture (the back buffer against the
+/// pre-UI copy). Faint changes (a see-through panel darkening what is behind) are added to the world as a change; strong
+/// ones (text, icons, bars) are Valheim's pixel itself.
+float3 with_hud(float3 world, float2 uv)
+{
+	if (!PreUi)
+		return world;
+	const float3 q = tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
+	const float3 delta = q - tex2Dlod(sPreUi, float4(uv, 0, 0)).rgb;
+	const float d = max(abs(delta.r), max(abs(delta.g), abs(delta.b)));
+	if (d < 1.5 / 255.0)
+		return world;
+	return lerp(saturate(world + delta), q, smoothstep(0.12, 0.4, d));
+}
+
 float4 PS_Light(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
-	return float4(tex2D(ReShade::BackBuffer, uv).rgb, 1.0);
+	return float4(host_world(uv), 1.0);
 }
 
 /// Minecraft renders at full daylight, so treat its colour as albedo and light it with Valheim's local light; then give it
@@ -158,7 +185,7 @@ float3 bands(float z)
 
 void PS_Composite(float4 pos : SV_Position, float2 uv : TEXCOORD, out float4 outColor : SV_Target0, out float4 outInfo : SV_Target1)
 {
-	const float3 host = tex2D(ReShade::BackBuffer, uv).rgb;
+	const float3 host = host_world(uv);
 	outInfo = 0.0;
 	outColor = float4(host, 1.0);
 	if (!McActive)
@@ -358,8 +385,9 @@ float3 PS_Final(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 		const float3 cold = lerp(float3(luma, luma, luma), color, 0.55) * float3(0.92, 0.86, 1.10) + float3(0.02, 0.0, 0.04);
 		color = lerp(color, cold * (0.82 - 0.35 * saturate(r - 0.35)), Infection.y * 0.75);
 	}
+	color = with_hud(saturate(color), uv); // Valheim's HUD is screen-space too: never shaken
 	const float4 overlay = tex2D(sOverlay, float2(uv.x, 1.0 - uv.y)); // hand and HUD are screen-space: never shaken
-	return overlay.rgb + saturate(color) * (1.0 - overlay.a);
+	return overlay.rgb + color * (1.0 - overlay.a);
 }
 
 technique MineHeim < ui_tooltip = "Minecraft passthrough: enabled automatically while the Minecraft link is up."; >

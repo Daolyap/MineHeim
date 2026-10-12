@@ -23,13 +23,17 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import dev.daolyap.mineheim.mixin.ProjectileInvoker;
 
 /**
  * Minecraft's mobs and the host's creatures in one fight:
  * <ul>
  * <li>the host's creatures stand here as invisible CreatureProxy entities ({"t":"creatures"} from the host, ~10 a second)</li>
  * <li>Minecraft's monsters with nothing to do hunt the nearest one they can see</li>
+ * <li>a mob's fireball (a ghast's, a blaze's) that comes close to one bursts on it</li>
  * <li>Minecraft's mobs near the player are reported to the host ({"t":"mobs"}, 5 a second) so they stand in the host's
  * world too, and the host's hits on them come back as {"t":"mhit"}</li>
  * </ul>
@@ -118,6 +122,10 @@ public final class Creatures {
 			hunt(level);
 		}
 
+		if (!proxies.isEmpty()) {
+			fuse(level);
+		}
+
 		if (MineHeim.active && ticks % 4 == 0) {
 			reportMobs(s, level);
 		}
@@ -150,6 +158,31 @@ public final class Creatures {
 		}
 
 		best.forEach(Creatures::attack);
+	}
+
+	/** How close a mob's fireball must pass a creature's box to burst on it, blocks. */
+	private static final double FUSE = 1.5;
+
+	/**
+	 * A mob's fireball that passes close to one of the host's creatures bursts on it. A ghast aims where a creature was, and
+	 * the host's flyers (a Gjall, Deathsquitos) drift and only move here 10 times a second: a fireball that needed to touch
+	 * the box exactly would sail past nearly every time and burst far away on the ground. Hitting it makes the fireball do
+	 * what it does to a player: its impact (sent to the host as a hit) and its blast (the host blasts what is in reach).
+	 */
+	private static void fuse(final ServerLevel level) {
+		for (CreatureProxy p : proxies.values()) {
+			if (p.isRemoved()) {
+				continue;
+			}
+
+			AABB reach = p.getBoundingBox().inflate(FUSE);
+			for (AbstractHurtingProjectile f : level.getEntitiesOfClass(AbstractHurtingProjectile.class, reach,
+				f -> f.isAlive() && f.getOwner() instanceof Mob owner && !(owner instanceof CreatureProxy) && f.tickCount > 2)) {
+				MineHeim.LOG.info("{} from {} burst on the host's {}", BuiltInRegistries.ENTITY_TYPE.getKey(f.getType()).getPath(),
+					BuiltInRegistries.ENTITY_TYPE.getKey(f.getOwner().getType()).getPath(), p.hostName);
+				((ProjectileInvoker) f).mineheim$onHit(new EntityHitResult(p));
+			}
+		}
 	}
 
 	/** How far around a creature to look for monsters: the farthest any mob notices a target (a ghast). */

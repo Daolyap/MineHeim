@@ -5,7 +5,9 @@
 // different here: it is a stand-alone add-on (MineHeim.addon64, loaded by ReShade itself), and Valheim's camera
 // comes from the plugin through the shared memory "Local\MineHeimHostPose" instead of from a game script. A
 // render-thread marker (VCRenderEvent, queued by the plugin into the main camera's command stream) says which frame is
-// being drawn, so the pose used for re-projection is the one that frame was rendered with.
+// being drawn, so the pose used for re-projection is the one that frame was rendered with. A second one (VCBeforeUi,
+// after the main camera is done) copies Valheim's picture before its HUD is drawn on top: the effect composites
+// Minecraft into that copy and puts the HUD (creature names and health, damage numbers, messages) back over it.
 #include <windows.h>
 #include <algorithm>
 #include <atomic>
@@ -69,6 +71,15 @@ namespace
 		resource_view srv = {0};
 	};
 	Layer g_world, g_depth, g_overlay;
+	// Valheim's picture before its HUD (VCBeforeUi). Created and filled on the render thread, bound in on_begin_effects.
+	Layer g_preUi;
+	uint32_t g_preUiWidth = 0, g_preUiHeight = 0;
+	format g_preUiFormat = format::unknown;
+	std::atomic<effect_runtime *> g_runtime{nullptr};
+	std::atomic<bool> g_preUiRebind{false};
+	// frames ReShade composited (counted in on_begin_effects) and the frame the copy was made in: only this frame's counts
+	std::atomic<int64_t> g_effectFrames{0}, g_preUiFrame{-1};
+	std::atomic<int32_t> g_preUiCopies{0};
 	uint32_t g_width = 0, g_height = 0;
 	bool g_hasFrame = false;
 	float g_mcNear = 0.05f, g_mcFar = 1024.0f;
@@ -387,6 +398,14 @@ namespace
 
 	void on_begin_effects(effect_runtime *runtime, command_list *, resource_view, resource_view)
 	{
+		// Valheim's picture before its HUD, if it was copied during this frame (else the effect uses the back buffer)
+		g_runtime.store(runtime, std::memory_order_release); // (also when the add-on came after the runtime was made)
+		const int64_t effectFrame = g_effectFrames.fetch_add(1, std::memory_order_acq_rel);
+		if (g_preUiRebind.exchange(false))
+			runtime->update_texture_bindings("VCPREUI", g_preUi.srv, g_preUi.srv);
+		const bool preUi = g_preUi.srv.handle != 0 && g_preUiFrame.load(std::memory_order_acquire) == effectFrame;
+		if (const effect_uniform_variable v = runtime->find_uniform_variable(kEffect, "PreUi"); v.handle != 0)
+			runtime->set_uniform_value_bool(v, preUi);
 		bool on = open_mappings();
 		Pose host;
 		if (on)
@@ -429,11 +448,11 @@ namespace
 		if (GetTickCount() >= g_nextStatus)
 		{
 			g_nextStatus = GetTickCount() + 5000;
-			char line[384];
-			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u heat=%.2f end=%.2f -> active=%d",
+			char line[512];
+			std::snprintf(line, sizeof(line), "MineHeim: mappings=%d pose=%d flags=%d fresh=%d mcFresh=%d hasFrame=%d renderFrame=%d markers=%d poseFrame=%lld newest=%lld mcFrame=%lld size=%ux%u heat=%.2f end=%.2f preUi=%d (%d copies, %ux%u) -> active=%d",
 				(g_frameView != nullptr && g_poseView != nullptr) ? 1 : 0, host.valid ? 1 : 0, host.flags, fresh ? 1 : 0, mcFresh ? 1 : 0, g_hasFrame ? 1 : 0,
 				int(g_renderFrame.load()), int(g_markerCalls.load()), (long long)host.frame, (long long)g_newestPoseFrame.load(), (long long)g_mcPose.frame, g_width, g_height,
-				host.heat, host.end, (on && g_hasFrame) ? 1 : 0);
+				host.heat, host.end, preUi ? 1 : 0, int(g_preUiCopies.load()), g_preUiWidth, g_preUiHeight, (on && g_hasFrame) ? 1 : 0);
 			reshade::log::message(reshade::log::level::info, line);
 		}
 		if (on)
@@ -516,15 +535,78 @@ namespace
 		}
 	}
 
+	void destroy_pre_ui(device *dev)
+	{
+		if (g_preUi.srv.handle != 0)
+			dev->destroy_resource_view(g_preUi.srv);
+		if (g_preUi.tex.handle != 0)
+			dev->destroy_resource(g_preUi.tex);
+		g_preUi = Layer();
+		g_preUiWidth = g_preUiHeight = 0;
+		g_preUiFormat = format::unknown;
+	}
+
+	/// Copy the back buffer as Valheim's camera left it (render thread, before the HUD is drawn).
+	void copy_pre_ui(effect_runtime *runtime)
+	{
+		device *dev = runtime->get_device();
+		const resource back = runtime->get_current_back_buffer();
+		if (back.handle == 0)
+			return;
+		const resource_desc desc = dev->get_resource_desc(back);
+		if (desc.type != resource_type::texture_2d || desc.texture.samples != 1)
+			return;
+		if (desc.texture.width != g_preUiWidth || desc.texture.height != g_preUiHeight || desc.texture.format != g_preUiFormat)
+		{
+			destroy_pre_ui(dev);
+			// the same layout as the back buffer (copy_resource needs it), read without sRGB decoding, as ReShade reads its own
+			const format typeless = format_to_typeless(desc.texture.format), view = format_to_default_typed(desc.texture.format, 0);
+			if (!dev->create_resource(
+					resource_desc(desc.texture.width, desc.texture.height, 1, 1, typeless, 1, memory_heap::default_, resource_usage::shader_resource | resource_usage::copy_dest),
+					nullptr, resource_usage::shader_resource, &g_preUi.tex) ||
+				!dev->create_resource_view(g_preUi.tex, resource_usage::shader_resource, resource_view_desc(view), &g_preUi.srv))
+			{
+				destroy_pre_ui(dev);
+				g_preUiFormat = desc.texture.format; // don't retry every frame
+				g_preUiWidth = desc.texture.width;
+				g_preUiHeight = desc.texture.height;
+				return;
+			}
+			g_preUiWidth = desc.texture.width;
+			g_preUiHeight = desc.texture.height;
+			g_preUiFormat = desc.texture.format;
+			g_preUiRebind = true;
+		}
+		if (g_preUi.tex.handle == 0)
+			return;
+		command_list *cmd = runtime->get_command_queue()->get_immediate_command_list();
+		cmd->barrier(back, resource_usage::render_target, resource_usage::copy_source);
+		cmd->barrier(g_preUi.tex, resource_usage::shader_resource, resource_usage::copy_dest);
+		cmd->copy_resource(back, g_preUi.tex);
+		cmd->barrier(g_preUi.tex, resource_usage::copy_dest, resource_usage::shader_resource);
+		cmd->barrier(back, resource_usage::copy_source, resource_usage::render_target);
+		g_preUiFrame.store(g_effectFrames.load(std::memory_order_acquire), std::memory_order_release);
+		g_preUiCopies.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void on_init_effect_runtime(effect_runtime *runtime)
+	{
+		g_runtime.store(runtime, std::memory_order_release);
+	}
+
 	void on_reloaded_effects(effect_runtime *runtime)
 	{
 		if (g_width != 0)
 			bind(runtime);
+		g_preUiRebind = true;
 	}
 
 	void on_destroy_effect_runtime(effect_runtime *runtime)
 	{
+		effect_runtime *expected = runtime;
+		g_runtime.compare_exchange_strong(expected, nullptr);
 		destroy_layers(runtime->get_device());
+		destroy_pre_ui(runtime->get_device());
 	}
 }
 
@@ -536,6 +618,14 @@ extern "C" __declspec(dllexport) void __stdcall VCRenderEvent(int eventId)
 	g_markerCalls.fetch_add(1, std::memory_order_relaxed);
 }
 
+// Queued by the plugin after the main camera is done (CommandBuffer.IssuePluginEvent at CameraEvent.AfterEverything):
+// Valheim's world is in the back buffer, its HUD is not yet.
+extern "C" __declspec(dllexport) void __stdcall VCBeforeUi(int)
+{
+	if (effect_runtime *runtime = g_runtime.load(std::memory_order_acquire))
+		copy_pre_ui(runtime);
+}
+
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 {
 	switch (reason)
@@ -544,6 +634,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 		if (!reshade::register_addon(module))
 			return FALSE;
 		QueryPerformanceFrequency(&g_qpcFreq);
+		reshade::register_event<reshade::addon_event::init_effect_runtime>(on_init_effect_runtime);
 		reshade::register_event<reshade::addon_event::reshade_begin_effects>(on_begin_effects);
 		reshade::register_event<reshade::addon_event::reshade_present>(on_present);
 		reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(on_reloaded_effects);

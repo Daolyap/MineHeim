@@ -251,6 +251,28 @@ public final class ValheimBag {
 		}
 	}
 
+	/** The bag took the last button press: its release is the bag's too. */
+	private static boolean ownsRelease;
+
+	/**
+	 * A button the host forwarded (ClientInput calls the screen straight, so Fabric's mouse events, fired in Minecraft's
+	 * MouseHandler, never see it): true when it was the bag's, and the screen must not see it.
+	 */
+	static boolean hostButton(final Screen screen, final MouseButtonEvent event, final boolean down) {
+		if (!MineHeim.active || !(screen instanceof InventoryScreen) && !(screen instanceof CreativeModeInventoryScreen)) {
+			return false;
+		}
+
+		if (!down) {
+			boolean owned = ownsRelease;
+			ownsRelease = false;
+			return owned;
+		}
+
+		ownsRelease = click(screen, event);
+		return ownsRelease;
+	}
+
 	/** A click on the panel (true: it was the panel's, Minecraft's screen does not see it). */
 	private static boolean click(final Screen screen, final MouseButtonEvent event) {
 		double[] m = local(origin(screen), event.x(), event.y());
@@ -271,6 +293,7 @@ public final class ValheimBag {
 		AbstractContainerScreen<?> container = (AbstractContainerScreen<?>) screen;
 		ItemStack carried = container.getMenu().getCarried();
 		if (!carried.isEmpty()) {
+			MineHeim.LOG.info("the Viking's bag: put down {}", carried);
 			putDown(minecraft, screen instanceof CreativeModeInventoryScreen);
 			return true;
 		}
@@ -281,6 +304,7 @@ public final class ValheimBag {
 			return true;
 		}
 
+		MineHeim.LOG.info("the Viking's bag: {} {} ({})", event.hasShiftDown() && !cell.twin().isEmpty() ? "into Minecraft:" : "onto the hotbar:", cell.prefab(), cell.name());
 		if (event.hasShiftDown() && !cell.twin().isEmpty()) {
 			MineHeim.events.accept(String.format(Locale.ROOT, "{\"t\":\"vcross\",\"x\":%d,\"y\":%d}", cell.x(), cell.y()));
 		} else {
