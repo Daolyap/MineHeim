@@ -1126,10 +1126,11 @@ public final class NetherInfection {
 					}
 				}
 				case "killdragon" -> {
-					// a real death (as a player's last hit), so the portal goes out as it does in play
+					// a real death (as a player's last hit: no health left, its death throes play), so the portal goes out as in
+					// play (kill() would remove it at once, like a command, and the infection would wait for it as gone)
 					for (Entity e : toList(level.getAllEntities())) {
-						if (e instanceof EnderDragon && e.entityTags().contains(MOB_TAG)) {
-							e.kill(level);
+						if (e instanceof EnderDragon dragon && e.entityTags().contains(MOB_TAG)) {
+							dragon.setHealth(0.0F);
 						}
 					}
 				}

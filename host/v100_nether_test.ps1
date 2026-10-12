@@ -21,7 +21,8 @@ $repo = Split-Path $PSScriptRoot -Parent
 $cmdFile = "$ValheimDir\BepInEx\mineheim-cmd.txt"
 $log = "$ValheimDir\BepInEx\LogOutput.log"
 $reshadeLog = "$ValheimDir\ReShade.log"
-$mcLog = "$env:LOCALAPPDATA\Temp\vc_runclient.log"   # the dev client's log (start_devclient.cmd); a Prism instance logs elsewhere
+$mcLog = "$env:LOCALAPPDATA\MineHeim\PrismLauncher\instances\MineHeim\.minecraft\logs\latest.log"   # Install.cmd's Prism instance
+if (-not (Test-Path $mcLog)) { $mcLog = "$env:LOCALAPPDATA\Temp\vc_runclient.log" }                  # the dev client's (start_devclient.cmd)
 $fails = @()
 
 function Count($file, $pattern) { (Select-String -Path $file -Pattern $pattern | Measure-Object).Count }
